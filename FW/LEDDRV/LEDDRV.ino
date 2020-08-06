@@ -83,8 +83,6 @@ int I2C_MomentaryButton::readstate(void)
       }
     }
 
-I2C_MomentaryButton X_AXIS_SELECT_BUTTON = I2C_MomentaryButton(&mcp1, 8, 177);
-
 /* Arduino digital */
 const int bufferedSW1 = 6;
 const int bufferedSW2 = 4;
@@ -116,23 +114,23 @@ const int MSGEQ7analogOut = 14;
 
 // GPIO A:
 //const unsigned char mcp_A0 = 0;                   // Not in use
-const unsigned char G1 = 0;
-const unsigned char F1 = 1;
-const unsigned char E1 = 2;
-const unsigned char D1 = 3;
-const unsigned char C1 = 4;
-const unsigned char B1 = 5;
-const unsigned char A1 = 6;
+const unsigned char segG1 = 0;
+const unsigned char segF1 = 1;
+const unsigned char segE1 = 2;
+const unsigned char segD1 = 3;
+const unsigned char segC1 = 4;
+const unsigned char segB1 = 5;
+const unsigned char segA1 = 6;
 
 // GPIO B:
 //const unsigned char mcp_B0 = 8;                   // Not in use
-const unsigned char G2 = 9;
-const unsigned char F2 = 10;
-const unsigned char E2 = 11;
-const unsigned char D2 = 12;
-const unsigned char C2 = 13;
-const unsigned char B2 = 14;
-const unsigned char A2 = 15;
+const unsigned char segG2 = 9;
+const unsigned char segF2 = 10;
+const unsigned char segE2 = 11;
+const unsigned char segD2 = 12;
+const unsigned char segC2 = 13;
+const unsigned char segB2 = 14;
+const unsigned char segA2 = 15;
 
 /***********************************************************************************************************************/
 /*                                                   VARIABLES                                                         */
@@ -141,6 +139,8 @@ const unsigned char A2 = 15;
 /* Other variables */
 
 Adafruit_MCP23017 mcp;
+
+I2C_MomentaryButton X_AXIS_SELECT_BUTTON = I2C_MomentaryButton(&mcp, 8, 177);
 
 // pin, pullup, inverted
 //Button button1(bufferedSW1, LOW, HIGH);
@@ -207,32 +207,25 @@ void setup() {
   mcp.begin();
 
   // Buttons
-  onb_button[0].setPin(bufferedSW1);
-  onb_button[1].setPin(bufferedSW2);
-  onb_button[2].setPin(bufferedSW3);
-  onb_button[3].setPin(bufferedSW4);
-  onb_button[4].setPin(bufferedSW5);
-  onb_button[5].setPin(bufferedSW6);
-  onb_button[6].setPin(bufferedSW7);
-  onb_button[7].setPin(bufferedSW8);
+  UIButton[0].setPin(bufferedSW1);
+  UIButton[1].setPin(bufferedSW2);
+  UIButton[2].setPin(bufferedSW3);
+  UIButton[3].setPin(bufferedSW4);
+  UIButton[4].setPin(bufferedSW5);
+  UIButton[5].setPin(bufferedSW6);
+  UIButton[6].setPin(bufferedSW7);
+  UIButton[7].setPin(bufferedSW8);
   
   for (int i = 0; i < NO_OF_BUTTONS; i++){
     b_pressed[i] = false;
   }
 
   for (int i = 0; i < NO_OF_BUTTONS; i++){
-    onb_button[i].setPullup(HIGH);
-    onb_button[i].setInverted(HIGH);
+    UIButton[i].setPullup(HIGH);
+    UIButton[i].setInverted(HIGH);
   }
-
-  // GPIO A:
-  mcp.pinMode(mcp_A0, OUTPUT);
-  mcp.digitalWrite(mcp_A0, LOW);
-  mcp.pullUp(mcp_A0, LOW);
-
-  // GPIO B:
-  mcp.pinMode(mcp_B0, OUTPUT);
-  mcp.digitalWrite(mcp_B0, LOW);
+  
+  X_AXIS_SELECT_BUTTON.init();
 
   /* Serial communications setup */
   
@@ -271,14 +264,14 @@ void setup() {
 void loop() { 
 
   // State machine
-  machine_state = state1;
+  machine_state = generic;
   
   switch(machine_state) {
-    case state1:
+    case music:
       machine_state1();
       break;
 
-    case state2:
+    case generic:
       break;
 
     case fault:
@@ -312,7 +305,7 @@ void loop() {
 /***********************************************************************************************************************/
 
 void machine_state1() {
-  if(button1.pressed()){
+  if(UIButton[0].pressed()){
     return;
   } else {
     return;

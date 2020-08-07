@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include "Adafruit_MCP23017.h"
 #include "KD_ardu_button.h"
+#include "KD_MCP23017Button.h"
 
 /* Hardware configuration */
 
@@ -33,57 +34,12 @@
 /*                                                  pin definitions                                                    */
 /***********************************************************************************************************************/
 
-class I2C_MomentaryButton 
-  {
-  private:
-    Adafruit_MCP23017 *_mcp_chip;
-    int _button_pin;
-    int _command;
-    bool _state_old;
-    bool _state;
-    int _button_illumination_pin;
-    
-  public: 
-    I2C_MomentaryButton(Adafruit_MCP23017 *mcp_chip, int buttonpin, int command);
-    I2C_MomentaryButton(void);
-    int init(void);
-    int readstate(void);
-    int sendstate(void);
-};
+/* MCP23017 Buttons */
 
-  I2C_MomentaryButton::I2C_MomentaryButton(Adafruit_MCP23017 *mcp_chip, int buttonpin, int command)
-  {
-    _button_pin = buttonpin;
-    _button_illumination_pin = 0;
-    _command = command;
-    _state_old = HIGH;
-    _state = LOW;
-    _state_old = LOW;
-    _mcp_chip = mcp_chip;
-  }
-  
-int I2C_MomentaryButton::init(void)
-  {
-    _mcp_chip->pinMode(_button_pin, INPUT);
-    return 1;
-  }
-  
-int I2C_MomentaryButton::readstate(void)
-  {
-    _state = _mcp_chip->digitalRead(_button_pin);
-    if(_state != _state_old)
-      {
-          _state_old = _state;
-          Serial.print(_command);
-          Serial.print(" 1 ");
-          Serial.print(_state);
-          Serial.print(" ");
-          Serial.println(_state+1+_command);
-      return 1;
-      }
-    }
+
 
 /* Arduino digital */
+
 const int bufferedSW1 = 6;
 const int bufferedSW2 = 4;
 const int bufferedSW3 = 12;

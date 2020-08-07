@@ -5,7 +5,7 @@
 class Button {
 
   private:
-  int pin = 0;
+  int button_pin = 0;
   bool released = true;
   bool inverted = false;
 

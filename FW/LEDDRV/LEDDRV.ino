@@ -96,7 +96,7 @@ const unsigned char segA2 = 15;
 
 Adafruit_MCP23017 mcp;
 
-I2C_MomentaryButton X_AXIS_SELECT_BUTTON = I2C_MomentaryButton(&mcp, 8, 177);
+MCP23017Button X_AXIS_SELECT_BUTTON = MCP23017Button(&mcp, 2, LOW, LOW);
 
 // pin, pullup, inverted
 //Button button1(bufferedSW1, LOW, HIGH);

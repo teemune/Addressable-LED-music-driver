@@ -1,34 +1,34 @@
 #include "KD_ardu_button.h"
 
-Button::Button(int _pin, bool _pullup, bool _inverted) {
-  pin = _pin;
+Button::Button(int _button_pin, bool _pullup, bool _inverted) {
+  button_pin = _button_pin;
   setPullup(_pullup);
   setInverted(_inverted);
   released = !state();
 };
 
-Button::Button(int _pin, bool _pullup) {
-  pin = _pin;
+Button::Button(int _button_pin, bool _pullup) {
+  button_pin = _button_pin;
   setPullup(_pullup);
   released = !state();
 };
 
-Button::Button(int _pin) {
-  pin = _pin;
+Button::Button(int _button_pin) {
+  button_pin = _button_pin;
   setPullup(false);
   released = !state();
 };
 
 void Button::setPullup(bool _pullup) {
   if(_pullup) {
-    pinMode(pin, INPUT_PULLUP);
+    pinMode(button_pin, INPUT_PULLUP);
   } else {
-    pinMode(pin, INPUT);
+    pinMode(button_pin, INPUT);
   }
 };
 
 bool Button::state() { //returns state
-  if(!inverted && digitalRead(pin) || inverted && !digitalRead(pin)) { // button is pressed (inverted != digitalRead(pin))
+  if(!inverted && digitalRead(button_pin) || inverted && !digitalRead(button_pin)) { // button is pressed (inverted != digitalRead(button_pin))
     return true;  
   }
   else {
@@ -54,9 +54,9 @@ bool Button::isReleased() {
   return released;
 }
 
-void Button::setPin(int _pin) 
+void Button::setPin(int _button_pin) 
 { 
-  pin = _pin; 
+  button_pin = _button_pin; 
 }
 
 void Button::setInverted(bool _invert) 

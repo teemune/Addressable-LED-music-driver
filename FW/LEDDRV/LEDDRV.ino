@@ -2,6 +2,7 @@
 #include "Adafruit_MCP23017.h"
 #include "KD_ardu_button.h"
 #include "KD_MCP23017Button.h"
+#include "KD_MCP23017_7seg.h"
 
 /* Hardware configuration */
 
@@ -96,7 +97,7 @@ const unsigned char segA2 = 15;
 
 Adafruit_MCP23017 mcp;
 
-MCP23017Button X_AXIS_SELECT_BUTTON = MCP23017Button(&mcp, 2, LOW, LOW);
+MCP23017SevenSegDisplay sevenSeg[2];
 
 // pin, pullup, inverted
 //Button button1(bufferedSW1, LOW, HIGH);
@@ -181,8 +182,6 @@ void setup() {
     UIButton[i].setPullup(HIGH);
     UIButton[i].setInverted(HIGH);
   }
-  
-  X_AXIS_SELECT_BUTTON.init();
 
   /* Serial communications setup */
   
@@ -255,6 +254,7 @@ void loop() {
         {
           Serial.print(F("Pressed button: "));
           Serial.println(i);
+          sevenSeg[0].setNumber(i);
         }
       }
 

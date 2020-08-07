@@ -53,3 +53,14 @@ bool Button::pressed() { //returns true if the button has been released and pres
 bool Button::isReleased() {
   return released;
 }
+
+void Button::setPin(int _pin) 
+{ 
+  pin = _pin; 
+}
+
+void Button::setInverted(bool _invert) 
+{
+  inverted = _invert; 
+  released = !state();
+}

@@ -9,9 +9,9 @@ class MCP23017Button
     bool inverted = false;
     
   public:
-    MCP23017Button(Adafruit_MCP23017 *mcp_chip, int _button_pin, bool _pullup, bool _inverted);
-    MCP23017Button(Adafruit_MCP23017 *mcp_chip, int _button_pin, bool _pullup);
-    MCP23017Button(Adafruit_MCP23017 *mcp_chip, int _button_pin);
+    MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin, bool _pullup, bool _inverted);
+    MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin, bool _pullup);
+    MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin);
     MCP23017Button(void) { }
     int init(void);
     bool setDevice(Adafruit_MCP23017*);

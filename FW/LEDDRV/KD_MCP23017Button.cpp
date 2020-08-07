@@ -1,4 +1,5 @@
 #include "KD_MCP23017Button.h"
+#include "Adafruit_MCP23017.h"
 #include <Arduino.h>
 
 MCP23017Button::MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin, bool _pullup, bool _inverted)
@@ -15,14 +16,14 @@ MCP23017Button::MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin, bo
   button_pin = _button_pin;
   setPullup(_pullup);
   released = !state();
-};
+}
 
 MCP23017Button::MCP23017Button(Adafruit_MCP23017 *_mcp_chip, int _button_pin) {
   mcp_chip = _mcp_chip;
   button_pin = _button_pin;
   setPullup(false);
   released = !state();
-};
+}
   
 int MCP23017Button::init(void)
 {
@@ -36,7 +37,7 @@ void MCP23017Button::setPullup(bool _pullup) {
   } else {
     mcp_chip->pinMode(button_pin, INPUT);
   }
-};
+}
 
 bool MCP23017Button::state(void)
 {

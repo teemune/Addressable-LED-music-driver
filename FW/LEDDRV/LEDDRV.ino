@@ -132,6 +132,7 @@ machine_state_list machine_state = unknown;
 /***********************************************************************************************************************/
 
 void machine_state1();
+void machine_state2();
 
 /* Analog in */
 float read_voltage(int);
@@ -220,7 +221,7 @@ void setup() {
 void loop() { 
 
   // State machine
-  machine_state = generic;
+  machine_state = music;
   
   switch(machine_state) {
     case music:
@@ -249,6 +250,14 @@ void loop() {
       Serial.print(F("Cycle: "));
       Serial.println(cycle_count);
 
+      for (int i = 0; i < NO_OF_BUTTONS; i++){
+        if(UIButton[i].pressed())
+        {
+          Serial.print(F("Pressed button: "));
+          Serial.println(i);
+        }
+      }
+
       _last_post_time = millis();
       cycle_count++;
       Serial.println("------");
@@ -271,6 +280,14 @@ void machine_state1() {
 /***********************************************************************************************************************/
 /*                                             STATE MACHINE 2:                                                        */
 /***********************************************************************************************************************/
+
+void machine_state2() {
+  if(UIButton[1].pressed()){
+    return;
+  } else {
+    return;
+  }
+}
 
 /***********************************************************************************************************************/
 /*                                             STATE MACHINE fault                                                     */

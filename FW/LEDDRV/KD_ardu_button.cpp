@@ -5,19 +5,19 @@ Button::Button(int _button_pin, bool _pullup, bool _inverted) {
   setPullup(_pullup);
   setInverted(_inverted);
   released = !state();
-};
+}
 
 Button::Button(int _button_pin, bool _pullup) {
   button_pin = _button_pin;
   setPullup(_pullup);
   released = !state();
-};
+}
 
 Button::Button(int _button_pin) {
   button_pin = _button_pin;
   setPullup(false);
   released = !state();
-};
+}
 
 void Button::setPullup(bool _pullup) {
   if(_pullup) {
@@ -25,7 +25,7 @@ void Button::setPullup(bool _pullup) {
   } else {
     pinMode(button_pin, INPUT);
   }
-};
+}
 
 bool Button::state() { //returns state
   if(!inverted && digitalRead(button_pin) || inverted && !digitalRead(button_pin)) { // button is pressed (inverted != digitalRead(button_pin))

@@ -1,3 +1,4 @@
+#include <FastLED.h>
 #include <Wire.h>
 #include "Adafruit_MCP23017.h"
 #include "KD_ardu_button.h"
@@ -30,6 +31,10 @@
 
 #define SERIAL_BAUD_RATE 57600                      // 57600 max with internal 8 MHz oscillator
 #define READ_BUFFER_SIZE 32
+
+/* LEDs */
+
+const unsigned int NUM_LEDS = 300;
 
 /***********************************************************************************************************************/
 /*                                                  pin definitions                                                    */
@@ -93,11 +98,17 @@ const unsigned char segA2 = 15;
 /*                                                   VARIABLES                                                         */
 /***********************************************************************************************************************/
 
-/* Other variables */
+/* LEDs */
 
-Adafruit_MCP23017 mcp;
+CRGB leds[NUM_LEDS];
+
+/* 7 segment */
 
 MCP23017SevenSegDisplay sevenSeg[2];
+
+/* Buttons */
+
+Adafruit_MCP23017 mcp;
 
 // pin, pullup, inverted
 //Button button1(bufferedSW1, LOW, HIGH);
@@ -112,6 +123,8 @@ MCP23017SevenSegDisplay sevenSeg[2];
 Button UIButton[NO_OF_BUTTONS];
 
 bool b_pressed[NO_OF_BUTTONS];
+
+/* Other */
 
 // Debugging
 unsigned long _last_post_time = 0;
@@ -146,6 +159,18 @@ byte I2C_command(byte _command);
 /***********************************************************************************************************************/
 
 void setup() {
+
+  // LEDs
+  FastLED.addLeds<WS2812, LED_UC_D>(leds, NUM_LEDS);
+
+  // Turn the LED on, then pause
+  leds[0] = CRGB::Red;
+  FastLED.show();
+  delay(500);
+  // Now turn the LED off, then pause
+  leds[0] = CRGB::Black;
+  FastLED.show();
+  delay(500);
 
   // ADC
   analogReference(INTERNAL);

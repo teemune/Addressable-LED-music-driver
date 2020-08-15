@@ -10,9 +10,9 @@ class Button {
   bool inverted = false;
 
   public:
-  Button(int, bool, bool);
-  Button(int, bool);
-  Button(int);
+  Button(int _button_pin, bool _pullup, bool _inverted);
+  Button(int _button_pin, bool _pullup);
+  Button(int _button_pint);
   Button(void) { }
   void setPin(int);
   void setPullup(bool);

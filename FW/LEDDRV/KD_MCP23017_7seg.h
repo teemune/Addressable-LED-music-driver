@@ -14,7 +14,8 @@ class MCP23017SevenSegDisplay {
   public:
   MCP23017SevenSegDisplay(Adafruit_MCP23017 *_mcp_chip);
   MCP23017SevenSegDisplay(void) { }
-  bool setDevice(Adafruit_MCP23017 *_mcp_chip);
-  void init(bool _inverted, int _pin_a, int _pin_b, int _pin_c, int _pin_d, int _pin_e, int _pin_f, int _pin_g, int _pin_dp);
+  void setInverted(bool _inverted);
+  void init(Adafruit_MCP23017 *_mcp_chip, int _pin_a, int _pin_b, int _pin_c, int _pin_d, int _pin_e, int _pin_f, int _pin_g, int _pin_dp);
   void setNumber(int _number);
+  void clearDisplay(void);
 };

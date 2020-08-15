@@ -110,21 +110,7 @@ MCP23017SevenSegDisplay sevenSeg[2];
 
 Adafruit_MCP23017 mcp;
 
-Adafruit_MCP23017 *_test_mcp_chip;
-
-// pin, pullup, inverted
-//Button button1(bufferedSW1, LOW, HIGH);
-//Button button1(bufferedSW2, LOW, HIGH);
-//Button button1(bufferedSW3, LOW, HIGH);
-//Button button1(bufferedSW4, LOW, HIGH);
-//Button button1(bufferedSW5, LOW, HIGH);
-//Button button1(bufferedSW6, LOW, HIGH);
-//Button button1(bufferedSW7, LOW, HIGH);
-//Button button1(bufferedSW8, LOW, HIGH);
-
 Button UIButton[NO_OF_BUTTONS];
-
-bool b_pressed[NO_OF_BUTTONS];
 
 /* Other */
 
@@ -189,31 +175,16 @@ void setup() {
   
   /* Pin settings on MCP23017 */
 
-  // Release from reset
-  pinMode(MCP23017_RESET, OUTPUT);
-  digitalWrite(MCP23017_RESET, LOW);
+  // Release from reset, not in use
+//  pinMode(MCP23017_RESET, OUTPUT);
+//  digitalWrite(MCP23017_RESET, HIGH);
 
   mcp.begin();
 
-  sevenSeg[0].setDevice(&mcp);
-  sevenSeg[1].setDevice(&mcp);
-
-//  mcp.pinMode(1,OUTPUT);
-//  mcp.pinMode(2,OUTPUT);
-//  mcp.pinMode(3,OUTPUT);
-//
-//  mcp.digitalWrite(1,LOW);
-//  mcp.digitalWrite(2,LOW);
-//  mcp.digitalWrite(3,LOW);
-
-  sevenSeg[0].init(LOW,1,2,3,4,5,6,7,8);
-  sevenSeg[1].init(LOW,9,10,11,12,13,14,15,16);
-
-//  _test_mcp_chip = &mcp;
-//  _test_mcp_chip->pinMode(3,OUTPUT);
-//  _test_mcp_chip->digitalWrite(3,LOW);
-
-  
+  sevenSeg[0].init(&mcp,7,6,5,4,3,2,1,0);
+  sevenSeg[1].init(&mcp,15,14,13,12,11,10,9,8);
+  sevenSeg[0].setInverted(HIGH);
+  sevenSeg[1].setInverted(HIGH);
 
   // Buttons
   UIButton[0].setPin(bufferedSW1);
@@ -224,10 +195,6 @@ void setup() {
   UIButton[5].setPin(bufferedSW6);
   UIButton[6].setPin(bufferedSW7);
   UIButton[7].setPin(bufferedSW8);
-  
-  for (int i = 0; i < NO_OF_BUTTONS; i++){
-    b_pressed[i] = false;
-  }
 
   for (int i = 0; i < NO_OF_BUTTONS; i++){
     UIButton[i].setInverted(HIGH);
@@ -295,7 +262,7 @@ void loop() {
     {
       Serial.print(F("Pressed button: "));
       Serial.println(i);
-      sevenSeg[0].setNumber(i);
+      //sevenSeg[0].setNumber(i);
       sevenSeg[1].setNumber(i);
     }
   }

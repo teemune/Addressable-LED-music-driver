@@ -58,7 +58,7 @@ const int bufferedSW8 = 21;
 const int MSGEQ7_STROBE = 5;
 const int MSGEQ7_RESET = 8;
 
-// const int MCP23017_RESET = 0;                    // The pin won't work with Arduino
+const int MCP23017_RESET = 30;                    // The pin won't work with Arduino
 
 const int LED_UC_X = 13;                            // Same as debug LED
 const int LED_UC_B = 10;
@@ -109,6 +109,8 @@ MCP23017SevenSegDisplay sevenSeg[2];
 /* Buttons */
 
 Adafruit_MCP23017 mcp;
+
+Adafruit_MCP23017 *_test_mcp_chip;
 
 // pin, pullup, inverted
 //Button button1(bufferedSW1, LOW, HIGH);
@@ -187,7 +189,31 @@ void setup() {
   
   /* Pin settings on MCP23017 */
 
+  // Release from reset
+  pinMode(MCP23017_RESET, OUTPUT);
+  digitalWrite(MCP23017_RESET, LOW);
+
   mcp.begin();
+
+  sevenSeg[0].setDevice(&mcp);
+  sevenSeg[1].setDevice(&mcp);
+
+//  mcp.pinMode(1,OUTPUT);
+//  mcp.pinMode(2,OUTPUT);
+//  mcp.pinMode(3,OUTPUT);
+//
+//  mcp.digitalWrite(1,LOW);
+//  mcp.digitalWrite(2,LOW);
+//  mcp.digitalWrite(3,LOW);
+
+  sevenSeg[0].init(LOW,1,2,3,4,5,6,7,8);
+  sevenSeg[1].init(LOW,9,10,11,12,13,14,15,16);
+
+//  _test_mcp_chip = &mcp;
+//  _test_mcp_chip->pinMode(3,OUTPUT);
+//  _test_mcp_chip->digitalWrite(3,LOW);
+
+  
 
   // Buttons
   UIButton[0].setPin(bufferedSW1);
@@ -269,27 +295,23 @@ void loop() {
     {
       Serial.print(F("Pressed button: "));
       Serial.println(i);
-      //sevenSeg[0].setNumber(i);
-      
+      sevenSeg[0].setNumber(i);
+      sevenSeg[1].setNumber(i);
     }
   }
 
 // Debugging
 #if DEBUG_LEVEL > 4
-    if((_last_post_time + POST_INTERVAL) < millis())
-    {
-      // Debug info
-      Serial.println(F("debugging info:"));
-      Serial.print(F("Cycle: "));
-      Serial.println(cycle_count);
-
-      Serial.println(digitalRead(bufferedSW6));
-      Serial.println(digitalRead(bufferedSW7));
-      Serial.println(digitalRead(bufferedSW8));
-      
-      _last_post_time = millis();
-      cycle_count++;
-      Serial.println("------");
+  if((_last_post_time + POST_INTERVAL) < millis())
+  {
+    // Debug info
+    Serial.println(F("debugging info:"));
+    Serial.print(F("Cycle: "));
+    Serial.println(cycle_count);
+    
+    _last_post_time = millis();
+    cycle_count++;
+    Serial.println("------");
   }
 #endif
 } // void loop()

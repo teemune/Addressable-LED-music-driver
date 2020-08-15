@@ -23,7 +23,7 @@
 /* Define debugging level */
 
 #define DEBUG_LEVEL 5
-#define POST_INTERVAL 5000
+#define POST_INTERVAL 1000
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
 
@@ -51,9 +51,9 @@ const int bufferedSW2 = 4;
 const int bufferedSW3 = 12;
 const int bufferedSW4 = 11;
 const int bufferedSW5 = 7;
-const int bufferedSW6 = 19;
-const int bufferedSW7 = 18;
-const int bufferedSW8 = 17;
+const int bufferedSW6 = 23;
+const int bufferedSW7 = 22;
+const int bufferedSW8 = 21;
 
 const int MSGEQ7_STROBE = 5;
 const int MSGEQ7_RESET = 8;
@@ -204,7 +204,6 @@ void setup() {
   }
 
   for (int i = 0; i < NO_OF_BUTTONS; i++){
-    UIButton[i].setPullup(HIGH);
     UIButton[i].setInverted(HIGH);
   }
 
@@ -265,6 +264,16 @@ void loop() {
       break;
   }
 
+  for (int i = 0; i < NO_OF_BUTTONS; i++){
+    if(UIButton[i].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      //sevenSeg[0].setNumber(i);
+      
+    }
+  }
+
 // Debugging
 #if DEBUG_LEVEL > 4
     if((_last_post_time + POST_INTERVAL) < millis())
@@ -274,15 +283,10 @@ void loop() {
       Serial.print(F("Cycle: "));
       Serial.println(cycle_count);
 
-      for (int i = 0; i < NO_OF_BUTTONS; i++){
-        if(UIButton[i].pressed())
-        {
-          Serial.print(F("Pressed button: "));
-          Serial.println(i);
-          sevenSeg[0].setNumber(i);
-        }
-      }
-
+      Serial.println(digitalRead(bufferedSW6));
+      Serial.println(digitalRead(bufferedSW7));
+      Serial.println(digitalRead(bufferedSW8));
+      
       _last_post_time = millis();
       cycle_count++;
       Serial.println("------");
@@ -295,11 +299,11 @@ void loop() {
 /***********************************************************************************************************************/
 
 void machine_state1() {
-  if(UIButton[0].pressed()){
-    return;
-  } else {
-    return;
-  }
+//  if(UIButton[0].pressed()){
+//    return;
+//  } else {
+//    return;
+//  }
 }
 
 /***********************************************************************************************************************/

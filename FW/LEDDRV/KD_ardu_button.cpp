@@ -56,7 +56,8 @@ bool Button::isReleased() {
 
 void Button::setPin(int _button_pin) 
 { 
-  button_pin = _button_pin; 
+  button_pin = _button_pin;
+  pinMode(button_pin, INPUT);
 }
 
 void Button::setInverted(bool _invert) 

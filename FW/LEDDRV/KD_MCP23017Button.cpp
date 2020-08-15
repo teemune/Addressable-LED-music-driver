@@ -74,7 +74,8 @@ bool MCP23017Button::setDevice(Adafruit_MCP23017 *_mcp_chip)
 
 void MCP23017Button::setPin(int _pin) 
 { 
-  button_pin = _pin; 
+  button_pin = _pin;
+  mcp_chip->pinMode(button_pin, INPUT);
 }
 
 void MCP23017Button::setInverted(bool _invert) 

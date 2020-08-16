@@ -40,10 +40,6 @@ const unsigned int NUM_LEDS = 300;
 /*                                                  pin definitions                                                    */
 /***********************************************************************************************************************/
 
-/* MCP23017 Buttons */
-
-
-
 /* Arduino digital */
 
 const int bufferedSW1 = 6;
@@ -58,11 +54,11 @@ const int bufferedSW8 = 21;
 const int MSGEQ7_STROBE = 5;
 const int MSGEQ7_RESET = 8;
 
-const int MCP23017_RESET = 30;                    // The pin won't work with Arduino
+const int MCP23017_RESET = 30;                      // The pin won't work with Arduino
 
 const int LED_UC_X = 13;                            // Same as debug LED
-const int LED_UC_B = 10;
-const int LED_UC_D = 9;
+const int LED_UC_B = 9;
+const int LED_UC_D = 10;
 
 const int TIP_SWITCH = 16;
 
@@ -147,18 +143,21 @@ byte I2C_command(byte _command);
 /***********************************************************************************************************************/
 
 void setup() {
-
+  
+  /* Serial communications setup */
+  
+  Serial.begin(SERIAL_BAUD_RATE);
+  while(!Serial){
+    ;                                               // Needed for Atmega32U4
+  }
+  
   // LEDs
-  FastLED.addLeds<WS2812, LED_UC_D>(leds, NUM_LEDS);
+  FastLED.addLeds<WS2813, LED_UC_D>(leds, NUM_LEDS);
 
-  // Turn the LED on, then pause
-  leds[0] = CRGB::Red;
+  for(int i=0;i<NUM_LEDS;i++){
+    leds[i] = CRGB::Red;
+  }
   FastLED.show();
-  delay(500);
-  // Now turn the LED off, then pause
-  leds[0] = CRGB::Black;
-  FastLED.show();
-  delay(500);
 
   // ADC
   analogReference(INTERNAL);
@@ -199,13 +198,6 @@ void setup() {
   for (int i = 0; i < NO_OF_BUTTONS; i++){
     UIButton[i].setInverted(HIGH);
   }
-
-  /* Serial communications setup */
-  
-  Serial.begin(SERIAL_BAUD_RATE);
-  while(!Serial){
-    ;                                               // Needed for Atmega32U4
-  }  
 
 #if DEBUG_LEVEL > 1
   Serial.println(F("Serial port opened"));
@@ -264,6 +256,11 @@ void loop() {
       Serial.println(i);
       //sevenSeg[0].setNumber(i);
       sevenSeg[1].setNumber(i);
+
+      for(int i=0;i<NUM_LEDS;i++){
+        leds[i] = CRGB::Red;
+      }
+      FastLED.show();
     }
   }
 
@@ -293,6 +290,7 @@ void machine_state1() {
 //  } else {
 //    return;
 //  }
+return;
 }
 
 /***********************************************************************************************************************/

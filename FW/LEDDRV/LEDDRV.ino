@@ -34,7 +34,7 @@
 
 /* LEDs */
 
-const unsigned int NUM_LEDS = 300;
+const unsigned int NUM_LEDS = 100;
 
 /***********************************************************************************************************************/
 /*                                                  pin definitions                                                    */
@@ -152,7 +152,7 @@ void setup() {
   }
   
   // LEDs
-  FastLED.addLeds<WS2813, LED_UC_D>(leds, NUM_LEDS);
+  FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
 
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB::Red;
@@ -250,18 +250,75 @@ void loop() {
   }
 
   for (int i = 0; i < NO_OF_BUTTONS; i++){
-    if(UIButton[i].pressed())
+    if(UIButton[0].pressed())
     {
       Serial.print(F("Pressed button: "));
       Serial.println(i);
       //sevenSeg[0].setNumber(i);
       sevenSeg[1].setNumber(i);
-
-      for(int i=0;i<NUM_LEDS;i++){
-        leds[i] = CRGB::Red;
+      for(int j=0;j<NUM_LEDS;j++){
+        leds[j] = CRGB::Red;
       }
-      FastLED.show();
     }
+    if(UIButton[1].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      //sevenSeg[0].setNumber(i);
+      sevenSeg[1].setNumber(i);
+      for(int j=0;j<NUM_LEDS;j++){
+        leds[j] = CRGB::Green;
+      }
+    }
+    if(UIButton[2].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      //sevenSeg[0].setNumber(i);
+      sevenSeg[1].setNumber(i);
+      for(int j=0;j<NUM_LEDS;j++){
+        leds[j] = CRGB::Blue;
+      }
+    }
+    if(UIButton[3].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      //sevenSeg[0].setNumber(i);
+      sevenSeg[1].setNumber(i);
+      for(int j=0;j<NUM_LEDS;j++){
+        leds[j] = CRGB::White;
+      }
+    }
+    if(UIButton[4].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      sevenSeg[1].setNumber(i);
+      for(int j=0;j<NUM_LEDS;j++){
+        leds[j] = CRGB::Yellow;
+        delay(10);
+        FastLED.show();
+      }
+    }
+    if(UIButton[5].pressed())
+    {
+      Serial.print(F("Pressed button: "));
+      Serial.println(i);
+      //sevenSeg[0].setNumber(i);
+      sevenSeg[1].setNumber(i);
+      int _dimming_value = 100;
+      for(int k=0;k<60;k++) {
+        for(int j=0;j<NUM_LEDS;j++){
+        //leds[j] = CRGB::Black;
+        //leds[j].nscale8_video(100 - 10 * j);
+        leds[j].fadeToBlackBy(k);
+        }
+        FastLED.show();
+        delay(10);
+      }
+    }
+    FastLED.show();
   }
 
 // Debugging

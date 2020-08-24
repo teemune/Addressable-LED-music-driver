@@ -117,7 +117,7 @@ byte cycle_count = 0;
 // enum type
 enum machine_state_list {
   music,
-  generic,
+  amplitude,
   off,
   fault,
   unknown
@@ -133,10 +133,11 @@ void machine_state1();
 void machine_state2();
 
 /* Analog in */
-float read_voltage(int);
+float readAmplitude(int _pin);
 
 /* Functions */
 byte I2C_command(byte _command);
+void readButtons(void);
 
 /***********************************************************************************************************************/
 /*                                                   SETUP LOOP                                                        */
@@ -236,7 +237,8 @@ void loop() {
       machine_state1();
       break;
 
-    case generic:
+    case amplitude:
+      machine_state2();
       break;
 
     case fault:
@@ -249,6 +251,76 @@ void loop() {
       break;
   }
 
+  readButtons();
+
+// Debugging
+#if DEBUG_LEVEL > 4
+  if((_last_post_time + POST_INTERVAL) < millis())
+  {
+    // Debug info
+    Serial.println(F("debugging info:"));
+    Serial.print(F("Cycle: "));
+    Serial.println(cycle_count);
+    
+    _last_post_time = millis();
+    cycle_count++;
+    Serial.println("------");
+  }
+#endif
+} // void loop()
+
+/***********************************************************************************************************************/
+/*                                             STATE MACHINE 1:                                                        */
+/***********************************************************************************************************************/
+
+void machine_state1() {
+  return;
+}
+
+/***********************************************************************************************************************/
+/*                                             STATE MACHINE 2:                                                        */
+/***********************************************************************************************************************/
+
+void machine_state2() {
+  return;
+}
+
+/***********************************************************************************************************************/
+/*                                             STATE MACHINE fault                                                     */
+/***********************************************************************************************************************/
+
+/***********************************************************************************************************************/
+/*                                             STATE MACHINE unknown                                                   */
+/***********************************************************************************************************************/
+
+/***********************************************************************************************************************/
+/*                                                   FUNCTIONS                                                         */
+/***********************************************************************************************************************/
+
+/* Analog in */
+float readAmplitude(int _pin) {
+  float _result = 0;
+  _result = AUX_VREF/ADC_CHANNELS * analogRead(_pin) ;
+  return _result;
+}
+
+/* I2C */
+
+byte I2C_command(byte _command) {
+  byte _reading = 0x00;
+  Wire.beginTransmission(I2C_ADDR);
+  Wire.write(byte(REG_HIGH_BYTE));
+  Wire.write(byte(REG_LOW_BYTE));
+  Wire.write(_command);
+  Wire.endTransmission();
+  Wire.requestFrom(I2C_ADDR, 1);
+  if (Wire.available()) {
+    _reading = Wire.read();
+  }
+  return _reading;
+}
+
+void readButtons() {
   for (int i = 0; i < NO_OF_BUTTONS; i++){
     if(UIButton[0].pressed())
     {
@@ -320,79 +392,4 @@ void loop() {
     }
     FastLED.show();
   }
-
-// Debugging
-#if DEBUG_LEVEL > 4
-  if((_last_post_time + POST_INTERVAL) < millis())
-  {
-    // Debug info
-    Serial.println(F("debugging info:"));
-    Serial.print(F("Cycle: "));
-    Serial.println(cycle_count);
-    
-    _last_post_time = millis();
-    cycle_count++;
-    Serial.println("------");
-  }
-#endif
-} // void loop()
-
-/***********************************************************************************************************************/
-/*                                             STATE MACHINE 1:                                                        */
-/***********************************************************************************************************************/
-
-void machine_state1() {
-//  if(UIButton[0].pressed()){
-//    return;
-//  } else {
-//    return;
-//  }
-return;
-}
-
-/***********************************************************************************************************************/
-/*                                             STATE MACHINE 2:                                                        */
-/***********************************************************************************************************************/
-
-void machine_state2() {
-  if(UIButton[1].pressed()){
-    return;
-  } else {
-    return;
-  }
-}
-
-/***********************************************************************************************************************/
-/*                                             STATE MACHINE fault                                                     */
-/***********************************************************************************************************************/
-
-/***********************************************************************************************************************/
-/*                                             STATE MACHINE unknown                                                   */
-/***********************************************************************************************************************/
-
-/***********************************************************************************************************************/
-/*                                                   FUNCTIONS                                                         */
-/***********************************************************************************************************************/
-
-/* Analog in */
-float read_voltage(int _pin) {
-  float _result = 0;
-  _result = AUX_VREF * analogRead(_pin) / ADC_CHANNELS;
-  return _result;
-}
-
-/* I2C */
-
-byte I2C_command(byte _command) {
-  byte _reading = 0x00;
-  Wire.beginTransmission(I2C_ADDR);
-  Wire.write(byte(REG_HIGH_BYTE));
-  Wire.write(byte(REG_LOW_BYTE));
-  Wire.write(_command);
-  Wire.endTransmission();
-  Wire.requestFrom(I2C_ADDR, 1);
-  if (Wire.available()) {
-    _reading = Wire.read();
-  }
-  return _reading;
 }

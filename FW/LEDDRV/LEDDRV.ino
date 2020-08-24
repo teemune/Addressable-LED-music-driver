@@ -101,7 +101,7 @@ const unsigned char segA2 = 15;
 
 /* FFT */
 
-uint8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
+int8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
 
 /* LEDs */
 
@@ -292,35 +292,45 @@ void machine_state1() {
 
   int _resultArray[FFT_DATA_SIZE];
   
-  // ADC prescaler 32 -> 40 kHz sample rate
+  // ADC prescaler 101 -> 32 prescale -> 40 kHz sample rate
+  // ADC prescaler 110 -> 64 prescale -> 20 kHz sample rate
   bitWrite(ADCSRA,2,1);
-  bitWrite(ADCSRA,1,0);
-  bitWrite(ADCSRA,0,1);
+  bitWrite(ADCSRA,1,1);
+  bitWrite(ADCSRA,0,0);
   
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    _resultArray[i] = analogRead(A1);
+    //_resultArray[i] = analogRead(A1);
+    FFTdata[i] = analogRead(A1) / 4 - 128;
   }
 
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     im[i] = 0;
   }
 
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    FFTdata[i] = (unsigned int)_resultArray[i] >> 2;
-  }
-
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    Serial.println(FFTdata[i]);
-  }
-
-  
-  
-//  fix_fft(FFTdata, im, 7, 0);  // FFT processing
-//
 //  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//    FFTdata[i] = sqrt(FFTdata[i] * FFTdata[i] + im[i] * im[i]);
+//    //FFTdata[i] = (unsigned int)_resultArray[i] >> 2;
+//    FFTdata[i] = _resultArray[i] / 4 - 128;
+//  }
+ 
+//  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+//    Serial.println(FFTdata[i]);
 //  }
 
+
+  fix_fft(FFTdata, im, 7, 0);  // FFT processing
+
+  double _doubleArray[FFT_DATA_SIZE];
+
+  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+    _doubleArray[i] = sqrt(FFTdata[i] * FFTdata[i] + im[i] * im[i]);
+  }
+  Serial.println(100);
+  Serial.println(100);
+  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+    Serial.println(_doubleArray[i]);
+  }
+  Serial.println(100);
+  Serial.println(100);
 //  for (i = 0; i < 8; i++) {
 //    // Average values
 //    j = i << 3;

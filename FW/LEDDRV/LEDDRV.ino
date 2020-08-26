@@ -24,7 +24,7 @@
 /* Define debugging level */
 
 #define DEBUG_LEVEL 5
-#define POST_INTERVAL 1000
+#define POST_INTERVAL 200
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
 
@@ -107,6 +107,8 @@ int8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
 
 CRGB leds[NUM_LEDS];
 
+uint8_t brightness, red, green, blue = 0;
+
 /* 7 segment */
 
 MCP23017SevenSegDisplay sevenSeg[2];
@@ -147,6 +149,10 @@ float readAmplitude(int _pin);
 /* Functions */
 byte I2C_command(byte _command);
 void readButtons(void);
+
+/* LED */
+void setLedColor(uint8_t brightness, uint8_t red, uint8_t green, uint8_t blue);
+void rotateLeds();
 
 /***********************************************************************************************************************/
 /*                                                   SETUP LOOP                                                        */
@@ -239,7 +245,7 @@ void setup() {
 void loop() { 
 
   // State machine
-  machine_state = music;
+  machine_state = amplitude;
   
   switch(machine_state) {
     case music:
@@ -276,6 +282,18 @@ void loop() {
 //    }
 
     //Serial.println(analogRead(A1));
+
+    red += 5;
+    green -= 5;
+    blue += 10;
+    brightness = 5;
+
+    Serial.println(red);
+    Serial.println(green);
+    Serial.println(blue);
+    Serial.println(brightness);
+    
+    rotateLeds();
 
     _last_post_time = millis();
     cycle_count++;
@@ -389,13 +407,13 @@ byte I2C_command(byte _command) {
 }
 
 void readButtons() {
-  for (int i = 0; i < NO_OF_BUTTONS; i++){
+
     if(UIButton[0].pressed())
     {
       Serial.print(F("Pressed button: "));
-      Serial.println(i);
-      //sevenSeg[0].setNumber(i);
-      sevenSeg[1].setNumber(i);
+      Serial.println(0);
+      //sevenSeg[0].setNumber(0);
+      sevenSeg[1].setNumber(0);
       for(int j=0;j<NUM_LEDS;j++){
         leds[j] = CRGB::Red;
       }
@@ -405,9 +423,9 @@ void readButtons() {
         machine_state1();
 
 //      Serial.print(F("Pressed button: "));
-//      Serial.println(i);
-//      //sevenSeg[0].setNumber(i);
-//      sevenSeg[1].setNumber(i);
+//      Serial.println(1);
+//      //sevenSeg[0].setNumber(1);
+//      sevenSeg[1].setNumber(1);
 //      for(int j=0;j<NUM_LEDS;j++){
 //        leds[j] = CRGB::Green;
 //      }
@@ -415,9 +433,9 @@ void readButtons() {
     if(UIButton[2].pressed())
     {
       Serial.print(F("Pressed button: "));
-      Serial.println(i);
-      //sevenSeg[0].setNumber(i);
-      sevenSeg[1].setNumber(i);
+      Serial.println(2);
+      //sevenSeg[0].setNumber(2);
+      sevenSeg[1].setNumber(2);
       for(int j=0;j<NUM_LEDS;j++){
         leds[j] = CRGB::Blue;
       }
@@ -425,9 +443,9 @@ void readButtons() {
     if(UIButton[3].pressed())
     {
       Serial.print(F("Pressed button: "));
-      Serial.println(i);
-      //sevenSeg[0].setNumber(i);
-      sevenSeg[1].setNumber(i);
+      Serial.println(3);
+      //sevenSeg[0].setNumber(3);
+      sevenSeg[1].setNumber(3);
       for(int j=0;j<NUM_LEDS;j++){
         leds[j] = CRGB::White;
       }
@@ -435,8 +453,8 @@ void readButtons() {
     if(UIButton[4].pressed())
     {
       Serial.print(F("Pressed button: "));
-      Serial.println(i);
-      sevenSeg[1].setNumber(i);
+      Serial.println(4);
+      sevenSeg[1].setNumber(4);
       for(int j=0;j<NUM_LEDS;j++){
         leds[j] = CRGB::Yellow;
         delay(10);
@@ -446,9 +464,9 @@ void readButtons() {
     if(UIButton[5].pressed())
     {
       Serial.print(F("Pressed button: "));
-      Serial.println(i);
+      Serial.println(5);
       //sevenSeg[0].setNumber(i);
-      sevenSeg[1].setNumber(i);
+      sevenSeg[1].setNumber(5);
       int _dimming_value = 100;
       for(int k=0;k<60;k++) {
         for(int j=0;j<NUM_LEDS;j++){
@@ -461,7 +479,6 @@ void readButtons() {
       }
     }
     FastLED.show();
-  }
 }
 
 void FFTsample(void) {
@@ -469,4 +486,24 @@ void FFTsample(void) {
     FFTdata[i] = analogRead(audioSignalIn);
     im[i] = 0;
   }
+}
+
+void setLedColorBuffer(uint8_t _brightness, uint8_t _red, uint8_t _green, uint8_t _blue) {
+  brightness = _brightness;
+  red = _red;
+  green = _green;
+  blue = _blue;
+}
+
+void rotateLeds() {
+
+  for(int i = NUM_LEDS - 1; i >= 1; i--){
+        leds[i] = leds[i-1];
+        leds[i].fadeLightBy(brightness);
+      }
+  
+  leds[0] = CRGB(red, green, blue);
+  leds[0].fadeLightBy(brightness);
+  
+  FastLED.show();
 }

@@ -150,6 +150,10 @@ float readAmplitude(int _pin);
 byte I2C_command(byte _command);
 void readButtons(void);
 
+/* FFT */
+
+void FFTsample(void);
+
 /* LED */
 void setLedColor(uint8_t brightness, uint8_t red, uint8_t green, uint8_t blue);
 void rotateLeds();
@@ -215,6 +219,12 @@ void setup() {
     UIButton[i].setInverted(HIGH);
   }
 
+  // ADC prescaler 101 -> 32 prescale -> 40 kHz sample rate
+  // ADC prescaler 110 -> 64 prescale -> 20 kHz sample rate
+  bitWrite(ADCSRA,2,1);
+  bitWrite(ADCSRA,1,1);
+  bitWrite(ADCSRA,0,0);
+
 //#if DEBUG_LEVEL > 1
 //  Serial.println(F("Serial port opened"));
 //  Serial.print(F("Serial baud rate: "));
@@ -249,7 +259,7 @@ void loop() {
   
   switch(machine_state) {
     case music:
-      //machine_state1();
+      machine_state1();
       break;
 
     case amplitude:
@@ -276,23 +286,7 @@ void loop() {
 //    Serial.println(F("debugging info:"));
 //    Serial.print(F("Cycle: "));
 //    Serial.println(cycle_count);
-
-//    for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//      Serial.println(FFTdata[i]);
-//    }
-
-    //Serial.println(analogRead(A1));
-
-    red += 5;
-    green -= 5;
-    blue += 10;
-    brightness = 5;
-
-    Serial.println(red);
-    Serial.println(green);
-    Serial.println(blue);
-    Serial.println(brightness);
-    
+   
     rotateLeds();
 
     _last_post_time = millis();
@@ -309,33 +303,21 @@ void loop() {
 void machine_state1() {
 
   int _resultArray[FFT_DATA_SIZE];
-  
-  // ADC prescaler 101 -> 32 prescale -> 40 kHz sample rate
-  // ADC prescaler 110 -> 64 prescale -> 20 kHz sample rate
-  bitWrite(ADCSRA,2,1);
-  bitWrite(ADCSRA,1,1);
-  bitWrite(ADCSRA,0,0);
-  
+
+  FFTsample();
+
+  Serial.println(100);
+  Serial.println(100);
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    //_resultArray[i] = analogRead(A1);
-    FFTdata[i] = analogRead(A1) / 4 - 128;
+    Serial.println(FFTdata[i]);
   }
+  Serial.println(100);
+  Serial.println(100);
 
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    im[i] = 0;
+  if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
+    
+    
   }
-
-//  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//    //FFTdata[i] = (unsigned int)_resultArray[i] >> 2;
-//    FFTdata[i] = _resultArray[i] / 4 - 128;
-//  }
- 
-//  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//    Serial.println(FFTdata[i]);
-//  }
-
-
-  fix_fft(FFTdata, im, 7, 0);  // FFT processing
 
   double _doubleArray[FFT_DATA_SIZE];
 
@@ -358,7 +340,16 @@ void machine_state1() {
 //      data_avgs[i] >>= 1;  // KK: De-emphasize first audio band (too sensitive)
 //    data_avgs[i] = map(data_avgs[i], 0, maxExpectedAudio, 0, 7); // Map for output to 8x8 display
 //  }
-    
+
+  red += 5;
+  green -= 5;
+  blue += 10;
+  brightness = 5;
+
+  Serial.println(red);
+  Serial.println(green);
+  Serial.println(blue);
+  Serial.println(brightness);
     
   return;
 }
@@ -482,8 +473,18 @@ void readButtons() {
 }
 
 void FFTsample(void) {
+
+//  int rawResults[FFT_DATA_SIZE];
+//
+//  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+//    FFTdata[i] = analogRead(A1) / 4 - 128;
+//  }
+  
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    FFTdata[i] = analogRead(audioSignalIn);
+    FFTdata[i] = analogRead(A1) / 4 - 128;
+  }
+
+  for (int i = 0; i < FFT_DATA_SIZE; i++) {
     im[i] = 0;
   }
 }
@@ -499,7 +500,6 @@ void rotateLeds() {
 
   for(int i = NUM_LEDS - 1; i >= 1; i--){
         leds[i] = leds[i-1];
-        leds[i].fadeLightBy(brightness);
       }
   
   leds[0] = CRGB(red, green, blue);

@@ -307,30 +307,38 @@ void machine_state1() {
   FFTsample();
 
   Serial.println(100);
-  Serial.println(100);
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     Serial.println(FFTdata[i]);
   }
-  Serial.println(100);
-  Serial.println(100);
 
   if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
-    
-    
+    Serial.println(F("Error in FFT"));
+    return;
   }
 
-  double _doubleArray[FFT_DATA_SIZE];
+  long _doubleArray[FFT_DATA_SIZE];
 
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    _doubleArray[i] = sqrt(FFTdata[i] * FFTdata[i] + im[i] * im[i]);
+    _doubleArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
   }
-  Serial.println(100);
-  Serial.println(100);
+  
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     Serial.println(_doubleArray[i]);
   }
+  Serial.println(0);
+  Serial.println(0);
+  Serial.println(0);
   Serial.println(100);
-  Serial.println(100);
+  
 //  for (i = 0; i < 8; i++) {
 //    // Average values
 //    j = i << 3;
@@ -341,15 +349,15 @@ void machine_state1() {
 //    data_avgs[i] = map(data_avgs[i], 0, maxExpectedAudio, 0, 7); // Map for output to 8x8 display
 //  }
 
-  red += 5;
-  green -= 5;
-  blue += 10;
-  brightness = 5;
-
-  Serial.println(red);
-  Serial.println(green);
-  Serial.println(blue);
-  Serial.println(brightness);
+//  red += 5;
+//  green -= 5;
+//  blue += 10;
+//  brightness = 5;
+//
+//  Serial.println(red);
+//  Serial.println(green);
+//  Serial.println(blue);
+//  Serial.println(brightness);
     
   return;
 }
@@ -474,18 +482,21 @@ void readButtons() {
 
 void FFTsample(void) {
 
-//  int rawResults[FFT_DATA_SIZE];
-//
-//  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//    FFTdata[i] = analogRead(A1) / 4 - 128;
-//  }
-  
+  int rawResults[FFT_DATA_SIZE];
+
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    FFTdata[i] = analogRead(A1) / 4 - 128;
+    rawResults[i] = 0;
+    im[i] = 0;
   }
 
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    im[i] = 0;
+    rawResults[i] = analogRead(A1);
+  }
+
+  // This could be combined with earlier to save up the space of rawResults[FFT_DATA_SIZE]
+  // With a small cost to sample rate
+  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+    FFTdata[i] = map(rawResults[i], 0, 1023, 0, 255) - 128;
   }
 }
 

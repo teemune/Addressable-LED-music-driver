@@ -45,6 +45,7 @@ const unsigned int BIN_THREE_TH = 43;
 /* FFT */
 
 const int FFT_DATA_SIZE = 128;
+const int FFT_NOISE_FLOOR = 5;
 
 /***********************************************************************************************************************/
 /*                                                  pin definitions                                                    */
@@ -326,8 +327,6 @@ void loop() {
 
 void machine_state1() {
 
-  int _resultArray[FFT_DATA_SIZE];
-
   FFTsample();
 
 #if DEBUG_LEVEL > 4
@@ -374,17 +373,23 @@ void machine_state1() {
 
   // Value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
-    _redValue += _absoluteValueArray[i];
+    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
+      _redValue += _absoluteValueArray[i];
+    }
   }
 
   // Value for green LED
   for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
-    _greenValue += _absoluteValueArray[i];
+    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
+      _greenValue += _absoluteValueArray[i];
+    }
   }
 
   // Value for blue LED
   for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
-    _blueValue += _absoluteValueArray[i];
+    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
+      _blueValue += _absoluteValueArray[i];
+    }
   }
 
   // Brightness value
@@ -394,13 +399,6 @@ void machine_state1() {
   green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY, 0, 255);
   blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY, 0, 255);
   //brightness = map(_brightnessValue, 0, (FFT_DATA_SIZE/2 - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
-
-#if DEBUG_LEVEL > 4
-  Serial.println(red);
-  Serial.println(green);
-  Serial.println(blue);
-  //Serial.println(brightness);
-#endif
     
   return;
 }

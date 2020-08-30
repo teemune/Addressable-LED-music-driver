@@ -23,7 +23,7 @@
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 4
 #define POST_INTERVAL 200
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -35,7 +35,12 @@
 
 /* LEDs */
 
+const unsigned int REFRESH_INTERVAL = 300;
+const unsigned int COLOR_SENSITIVITY = 10;
 const unsigned int NUM_LEDS = 100;
+const unsigned int BIN_ONE_TH = 0;
+const unsigned int BIN_TWO_TH = 23;
+const unsigned int BIN_THREE_TH = 43;
 
 /* FFT */
 
@@ -106,6 +111,7 @@ int8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
 /* LEDs */
 
 CRGB leds[NUM_LEDS];
+unsigned long _last_refresh_time = 0;
 
 uint8_t brightness, red, green, blue = 0;
 
@@ -175,7 +181,27 @@ void setup() {
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
 
   for(int i=0;i<NUM_LEDS;i++){
-    leds[i] = CRGB::Red;
+    leds[i] = CRGB(25, 0, 0);
+  }
+  FastLED.show();
+  delay(300);
+  for(int i=0;i<NUM_LEDS;i++){
+    leds[i] = CRGB(0, 25, 0);
+  }
+  FastLED.show();
+  delay(300);
+  for(int i=0;i<NUM_LEDS;i++){
+    leds[i] = CRGB(0, 0, 25);
+  }
+  FastLED.show();
+  delay(300);
+  for(int i=0;i<NUM_LEDS;i++){
+    leds[i] = CRGB(15, 15, 15);
+  }
+  FastLED.show();
+  delay(300);
+  for(int i=0;i<NUM_LEDS;i++){
+    leds[i] = CRGB(0, 0, 0);
   }
   FastLED.show();
 
@@ -225,26 +251,18 @@ void setup() {
   bitWrite(ADCSRA,1,1);
   bitWrite(ADCSRA,0,0);
 
-//#if DEBUG_LEVEL > 1
-//  Serial.println(F("Serial port opened"));
-//  Serial.print(F("Serial baud rate: "));
-//  Serial.print(SERIAL_BAUD_RATE);
-//  Serial.println(F(" bit/s"));
-//#endif
+#if DEBUG_LEVEL > 2
+  Serial.println(F("Serial port opened"));
+  Serial.print(F("Serial baud rate: "));
+  Serial.print(SERIAL_BAUD_RATE);
+  Serial.println(F(" bit/s"));
+#endif
 
   /* Setup complete */
 
-  // Delay with blinking
-//  for(int i = 0; i < 5; i++) {
-//    digitalWrite(debugLED, HIGH);
-//    delay(100);
-//    digitalWrite(debugLED, LOW);
-//    delay(100);
-//  }
-
-//#if DEBUG_LEVEL > 1
-//  Serial.println(F("Setup complete"));
-//#endif
+#if DEBUG_LEVEL > 2
+  Serial.println(F("Setup complete"));
+#endif
   
 }
 
@@ -255,7 +273,7 @@ void setup() {
 void loop() { 
 
   // State machine
-  machine_state = amplitude;
+  machine_state = music;
   
   switch(machine_state) {
     case music:
@@ -278,6 +296,12 @@ void loop() {
 
   readButtons();
 
+  if((_last_refresh_time + REFRESH_INTERVAL) < millis())
+  {
+    rotateLeds();
+    _last_refresh_time = millis();
+  }
+
 // Debugging
 #if DEBUG_LEVEL > 4
   if((_last_post_time + POST_INTERVAL) < millis())
@@ -287,7 +311,7 @@ void loop() {
 //    Serial.print(F("Cycle: "));
 //    Serial.println(cycle_count);
    
-    rotateLeds();
+    
 
     _last_post_time = millis();
     cycle_count++;
@@ -306,6 +330,7 @@ void machine_state1() {
 
   FFTsample();
 
+#if DEBUG_LEVEL > 4
   Serial.println(100);
   Serial.println(0);
   Serial.println(0);
@@ -313,51 +338,69 @@ void machine_state1() {
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     Serial.println(FFTdata[i]);
   }
+#endif
 
   if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
     Serial.println(F("Error in FFT"));
     return;
   }
 
-  long _doubleArray[FFT_DATA_SIZE];
+  int _absoluteValueArray[FFT_DATA_SIZE];
 
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    _doubleArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+    _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
   }
-  
+
+#if DEBUG_LEVEL > 4
   Serial.println(0);
   Serial.println(0);
   Serial.println(0);
   Serial.println(0);
   Serial.println(0);
   Serial.println(0);
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    Serial.println(_doubleArray[i]);
+  for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
+    Serial.println(_absoluteValueArray[i]);
   }
   Serial.println(0);
   Serial.println(0);
   Serial.println(0);
   Serial.println(100);
-  
-//  for (i = 0; i < 8; i++) {
-//    // Average values
-//    j = i << 3;
-//    data_avgs[i] = data[j] + data[j + 1] + data[j + 2] + data[j + 3]
-//      + data[j + 4] + data[j + 5] + data[j + 6] + data[j + 7];
-//    if (i == 0)
-//      data_avgs[i] >>= 1;  // KK: De-emphasize first audio band (too sensitive)
-//    data_avgs[i] = map(data_avgs[i], 0, maxExpectedAudio, 0, 7); // Map for output to 8x8 display
-//  }
+#endif
 
-//  red += 5;
-//  green -= 5;
-//  blue += 10;
-//  brightness = 5;
-//
-//  Serial.println(red);
-//  Serial.println(green);
-//  Serial.println(blue);
-//  Serial.println(brightness);
+  uint16_t _redValue = 0;
+  uint16_t _greenValue = 0;
+  uint16_t _blueValue = 0;
+  uint16_t _brightnessValue = 0;
+
+  // Value for red LED
+  for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
+    _redValue += _absoluteValueArray[i];
+  }
+
+  // Value for green LED
+  for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
+    _greenValue += _absoluteValueArray[i];
+  }
+
+  // Value for blue LED
+  for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
+    _blueValue += _absoluteValueArray[i];
+  }
+
+  // Brightness value
+  //_brightnessValue = _redValue + _greenValue + _blueValue;
+
+  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
+  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY, 0, 255);
+  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY, 0, 255);
+  //brightness = map(_brightnessValue, 0, (FFT_DATA_SIZE/2 - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
+
+#if DEBUG_LEVEL > 4
+  Serial.println(red);
+  Serial.println(green);
+  Serial.println(blue);
+  //Serial.println(brightness);
+#endif
     
   return;
 }
@@ -512,9 +555,18 @@ void rotateLeds() {
   for(int i = NUM_LEDS - 1; i >= 1; i--){
         leds[i] = leds[i-1];
       }
+      
+#if DEBUG_LEVEL > 3
+  Serial.print("LEDs: ");
+  Serial.print(red);
+  Serial.print(", ");
+  Serial.print(green);
+  Serial.print(", ");
+  Serial.println(blue);
+#endif
   
   leds[0] = CRGB(red, green, blue);
-  leds[0].fadeLightBy(brightness);
+  //leds[0].fadeLightBy(brightness);
   
   FastLED.show();
 }

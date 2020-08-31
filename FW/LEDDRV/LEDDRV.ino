@@ -15,6 +15,8 @@
 // ADC
 #define AUX_VREF 2.56
 #define ADC_CHANNELS 1024
+#define ADC_PRESCALE_32                           // 32 = ~40 kHz sampling
+//#define ADC_PRESCALE_64                             // ~20 kHz sampling
 
 // I2C
 #define I2C_ADDR 0x20
@@ -33,19 +35,38 @@
 #define SERIAL_BAUD_RATE 57600                      // 57600 max with internal 8 MHz oscillator
 #define READ_BUFFER_SIZE 32
 
-/* LEDs */
-
-const unsigned int REFRESH_INTERVAL = 300;
-const unsigned int COLOR_SENSITIVITY = 10;
-const unsigned int NUM_LEDS = 100;
-const unsigned int BIN_ONE_TH = 0;
-const unsigned int BIN_TWO_TH = 23;
-const unsigned int BIN_THREE_TH = 43;
-
 /* FFT */
 
 const int FFT_DATA_SIZE = 128;
 const int FFT_NOISE_FLOOR = 5;
+
+/* LEDs */
+
+const unsigned int REFRESH_INTERVAL = 2000;
+const unsigned int COLOR_SENSITIVITY = 10;
+const unsigned int NUM_LEDS = 100;
+
+const unsigned int BIN_ONE_TH_HZ = 0;               // Frequencies below this will be ignored
+const unsigned int BIN_TWO_TH_HZ = 400;             // f below this will light red leds, above green
+const unsigned int BIN_THREE_TH_HZ = 800;           // f above this will light blue leds
+
+/* Other */
+
+//#ifdef ADC_PRESCALE_32
+//  const unsigned int hzPerBin = 35000 / FFT_DATA_SIZE;
+//#endif
+//
+//#ifdef ADC_PRESCALE_64
+//  const unsigned int hzPerBin = 17000 / FFT_DATA_SIZE;
+//#endif
+
+//const unsigned int BIN_ONE_TH = BIN_ONE_TH_HZ / hzPerBin;
+//const unsigned int BIN_TWO_TH = BIN_TWO_TH_HZ / hzPerBin;
+//const unsigned int BIN_THREE_TH = BIN_THREE_TH_HZ / hzPerBin;
+
+const unsigned int BIN_ONE_TH = 0;
+const unsigned int BIN_TWO_TH = 2;
+const unsigned int BIN_THREE_TH = 20;
 
 /***********************************************************************************************************************/
 /*                                                  pin definitions                                                    */
@@ -246,11 +267,25 @@ void setup() {
     UIButton[i].setInverted(HIGH);
   }
 
-  // ADC prescaler 101 -> 32 prescale -> 40 kHz sample rate
-  // ADC prescaler 110 -> 64 prescale -> 20 kHz sample rate
+  /* ADC */
+
+  // ADC conversion takes 14.5 clock cycles
+  
+  // ADC prescaler 101 -> 32 prescale -> 35 kHz sample rate
+  // ADC clock 500 kHz
+#ifdef ADC_PRESCALE_32
   bitWrite(ADCSRA,2,1);
   bitWrite(ADCSRA,1,1);
   bitWrite(ADCSRA,0,0);
+#endif
+
+  // ADC prescaler 110 -> 64 prescale -> 17 kHz sample rate
+  // ADC clock 250 kHz
+#ifdef ADC_PRESCALE_64
+  bitWrite(ADCSRA,2,1);
+  bitWrite(ADCSRA,1,1);
+  bitWrite(ADCSRA,0,0);
+#endif
 
 #if DEBUG_LEVEL > 2
   Serial.println(F("Serial port opened"));
@@ -350,20 +385,15 @@ void machine_state1() {
     _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
   }
 
-#if DEBUG_LEVEL > 4
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
-    Serial.println(_absoluteValueArray[i]);
+#if DEBUG_LEVEL > 3
+  for (int i = 0; i < 5; i++) {
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.print(_absoluteValueArray[i]);
+    Serial.print(", ");
+    delay(10);
   }
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(100);
+  Serial.println("");
 #endif
 
   uint16_t _redValue = 0;

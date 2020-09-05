@@ -25,7 +25,7 @@
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 4
+#define DEBUG_LEVEL 2
 #define POST_INTERVAL 200
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -38,12 +38,15 @@
 /* FFT */
 
 const int FFT_DATA_SIZE = 128;
-const int FFT_NOISE_FLOOR = 5;
+const int FFT_NOISE_FLOOR = 10;
 
 /* LEDs */
 
-const unsigned int REFRESH_INTERVAL = 2000;
-const unsigned int COLOR_SENSITIVITY = 10;
+const unsigned int REFRESH_INTERVAL = 10;
+const unsigned int COLOR_SENSITIVITY = 10;          // Overall sensitivity
+const unsigned int RED_SENSITIVITY = 1;            // Sensitivity adjustment for red
+const unsigned int GREEN_SENSITIVITY = 5;          // Sensitivity adjustment for green
+const unsigned int BLUE_SENSITIVITY = 50;           // Sensitivity adjustment for blue
 const unsigned int NUM_LEDS = 100;
 
 const unsigned int BIN_ONE_TH_HZ = 0;               // Frequencies below this will be ignored
@@ -66,7 +69,7 @@ const unsigned int BIN_THREE_TH_HZ = 800;           // f above this will light b
 
 const unsigned int BIN_ONE_TH = 0;
 const unsigned int BIN_TWO_TH = 2;
-const unsigned int BIN_THREE_TH = 20;
+const unsigned int BIN_THREE_TH = 7;
 
 /***********************************************************************************************************************/
 /*                                                  pin definitions                                                    */
@@ -425,9 +428,9 @@ void machine_state1() {
   // Brightness value
   //_brightnessValue = _redValue + _greenValue + _blueValue;
 
-  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
-  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY, 0, 255);
-  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY, 0, 255);
+  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY/RED_SENSITIVITY, 0, 255);
+  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255);
+  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY/BLUE_SENSITIVITY, 0, 255);
   //brightness = map(_brightnessValue, 0, (FFT_DATA_SIZE/2 - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
     
   return;
@@ -490,7 +493,24 @@ void readButtons() {
     }
     if(UIButton[1].pressed())
     {
-        machine_state1();
+      machine_state1();
+
+      int _absoluteValueArray[FFT_DATA_SIZE];
+
+      for (int i = 0; i < FFT_DATA_SIZE; i++) {
+        _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+      }
+
+#if DEBUG_LEVEL > 1
+      for (int i = 0; i < 5; i++) {
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.print(_absoluteValueArray[i]);
+        Serial.print(", ");
+        delay(10);
+      }
+      Serial.println("");
+#endif
 
 //      Serial.print(F("Pressed button: "));
 //      Serial.println(1);

@@ -333,10 +333,12 @@ void loop() {
       break;
   }
 
+  // Causes distortion in analog signal with max gain
   readButtons();
 
   if((_last_refresh_time + REFRESH_INTERVAL) < millis())
   {
+    // Causes distortion in analog signal with max gain
     rotateLeds();
     _last_refresh_time = millis();
   }

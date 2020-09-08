@@ -38,7 +38,7 @@
 /* FFT */
 
 const int FFT_DATA_SIZE = 128;
-const int FFT_NOISE_FLOOR = 2;
+const int FFT_NOISE_FLOOR = 3;                      // Anything less than 3 will show some yellow on low f
 
 /* LEDs */
 

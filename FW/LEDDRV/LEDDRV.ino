@@ -483,94 +483,112 @@ byte I2C_command(byte _command) {
 
 void readButtons() {
 
-    if(UIButton[0].pressed())
-    {
-      Serial.print(F("Pressed button: "));
-      Serial.println(0);
-      //sevenSeg[0].setNumber(0);
-      sevenSeg[1].setNumber(0);
-      for(int j=0;j<NUM_LEDS;j++){
-        leds[j] = CRGB::Red;
-      }
-    }
-    if(UIButton[1].pressed())
-    {
-      machine_state1();
-
-      int _absoluteValueArray[FFT_DATA_SIZE];
-
-      for (int i = 0; i < FFT_DATA_SIZE; i++) {
-        _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
-      }
-
-#if DEBUG_LEVEL > 1
-      for (int i = 0; i < 5; i++) {
-        Serial.print(i);
-        Serial.print(": ");
-        Serial.print(_absoluteValueArray[i]);
-        Serial.print(", ");
-        delay(10);
-      }
-      Serial.println("");
+  if(UIButton[0].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(0);
 #endif
-
-//      Serial.print(F("Pressed button: "));
-//      Serial.println(1);
-//      //sevenSeg[0].setNumber(1);
-//      sevenSeg[1].setNumber(1);
-//      for(int j=0;j<NUM_LEDS;j++){
-//        leds[j] = CRGB::Green;
-//      }
-    }
-    if(UIButton[2].pressed())
-    {
-      Serial.print(F("Pressed button: "));
-      Serial.println(2);
-      //sevenSeg[0].setNumber(2);
-      sevenSeg[1].setNumber(2);
-      for(int j=0;j<NUM_LEDS;j++){
-        leds[j] = CRGB::Blue;
-      }
-    }
-    if(UIButton[3].pressed())
-    {
-      Serial.print(F("Pressed button: "));
-      Serial.println(3);
-      //sevenSeg[0].setNumber(3);
-      sevenSeg[1].setNumber(3);
-      for(int j=0;j<NUM_LEDS;j++){
-        leds[j] = CRGB::White;
-      }
-    }
-    if(UIButton[4].pressed())
-    {
-      Serial.print(F("Pressed button: "));
-      Serial.println(4);
-      sevenSeg[1].setNumber(4);
-      for(int j=0;j<NUM_LEDS;j++){
-        leds[j] = CRGB::Yellow;
-        delay(10);
-        FastLED.show();
-      }
-    }
-    if(UIButton[5].pressed())
-    {
-      Serial.print(F("Pressed button: "));
-      Serial.println(5);
-      //sevenSeg[0].setNumber(i);
-      sevenSeg[1].setNumber(5);
-      int _dimming_value = 100;
-      for(int k=0;k<60;k++) {
-        for(int j=0;j<NUM_LEDS;j++){
-        //leds[j] = CRGB::Black;
-        //leds[j].nscale8_video(100 - 10 * j);
-        leds[j].fadeToBlackBy(k);
-        }
-        FastLED.show();
-        delay(10);
-      }
+    //sevenSeg[0].setNumber(0);
+    sevenSeg[1].setNumber(0);
+    for(int j=0;j<NUM_LEDS;j++){
+      leds[j] = CRGB::Red;
     }
     FastLED.show();
+  }
+  if(UIButton[1].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(1);
+#endif
+
+    int _absoluteValueArray[FFT_DATA_SIZE];
+
+    for (int i = 0; i < FFT_DATA_SIZE; i++) {
+      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+    }
+
+#if DEBUG_LEVEL > 1
+    for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
+      
+/* Formatting for plotter */
+Serial.println(_absoluteValueArray[i]);
+
+///* Formatting for serial monitor */
+//      Serial.print(i);
+//      Serial.print(": ");
+//      Serial.print(_absoluteValueArray[i]);
+//      Serial.print(", ");
+//      delay(10);
+
+    }
+//    Serial.println("");
+#endif
+
+    sevenSeg[1].setNumber(1);
+
+    FastLED.show();
+  }
+  if(UIButton[2].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(2);
+#endif
+    //sevenSeg[0].setNumber(2);
+    sevenSeg[1].setNumber(2);
+    for(int j=0;j<NUM_LEDS;j++){
+      leds[j] = CRGB::Blue;
+    }
+    FastLED.show();
+  }
+  if(UIButton[3].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(3);
+#endif
+    //sevenSeg[0].setNumber(3);
+    sevenSeg[1].setNumber(3);
+    for(int j=0;j<NUM_LEDS;j++){
+      leds[j] = CRGB::White;
+    }
+    FastLED.show();
+  }
+  if(UIButton[4].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(4);
+#endif
+    sevenSeg[1].setNumber(4);
+    for(int j=0;j<NUM_LEDS;j++){
+      leds[j] = CRGB::Yellow;
+      delay(10);
+      FastLED.show();
+    }
+  }
+  if(UIButton[5].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(5);
+#endif
+    //sevenSeg[0].setNumber(i);
+    sevenSeg[1].setNumber(5);
+    int _dimming_value = 100;
+    for(int k=0;k<60;k++) {
+      for(int j=0;j<NUM_LEDS;j++){
+      //leds[j] = CRGB::Black;
+      //leds[j].nscale8_video(100 - 10 * j);
+      leds[j].fadeToBlackBy(k);
+      }
+      FastLED.show();
+      delay(10);
+    }
+  }
+  
 }
 
 void FFTsample(void) {

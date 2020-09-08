@@ -26,7 +26,7 @@
 /* Define debugging level */
 
 #define DEBUG_LEVEL 2
-#define POST_INTERVAL 200
+#define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
 
@@ -38,14 +38,15 @@
 /* FFT */
 
 const int FFT_DATA_SIZE = 128;
-const int FFT_NOISE_FLOOR = 10;
+const int FFT_NOISE_FLOOR = 2;
 
 /* LEDs */
 
-const unsigned int REFRESH_INTERVAL = 10;
+const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
+const unsigned int REFRESH_INTERVAL = 50;           // How often to light up a new LED (ms)
 const unsigned int COLOR_SENSITIVITY = 10;          // Overall sensitivity
-const unsigned int RED_SENSITIVITY = 1;            // Sensitivity adjustment for red
-const unsigned int GREEN_SENSITIVITY = 5;          // Sensitivity adjustment for green
+const unsigned int RED_SENSITIVITY = 1;             // Sensitivity adjustment for red
+const unsigned int GREEN_SENSITIVITY = 5;           // Sensitivity adjustment for green
 const unsigned int BLUE_SENSITIVITY = 50;           // Sensitivity adjustment for blue
 const unsigned int NUM_LEDS = 100;
 
@@ -333,7 +334,6 @@ void loop() {
       break;
   }
 
-  // Causes distortion in analog signal with max gain
   readButtons();
 
   if((_last_refresh_time + REFRESH_INTERVAL) < millis())
@@ -344,15 +344,23 @@ void loop() {
   }
 
 // Debugging
-#if DEBUG_LEVEL > 4
+#if DEBUG_LEVEL > 0
   if((_last_post_time + POST_INTERVAL) < millis())
   {
     // Debug info
 //    Serial.println(F("debugging info:"));
 //    Serial.print(F("Cycle: "));
 //    Serial.println(cycle_count);
-   
-    
+
+    int _absoluteValueArray[FFT_DATA_SIZE];
+
+    for (int i = 0; i < FFT_DATA_SIZE; i++) {
+      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+    }
+
+    for (int i = 0; i < FFT_DATA_SIZE; i++) {
+      Serial.println(_absoluteValueArray[i]);
+    }
 
     _last_post_time = millis();
     cycle_count++;
@@ -405,6 +413,13 @@ void machine_state1() {
   uint16_t _greenValue = 0;
   uint16_t _blueValue = 0;
   uint16_t _brightnessValue = 0;
+
+  // Suppress the low frequency peak
+  if(_absoluteValueArray[0] < LOW_PEAK_SUPPRESSION) {
+      _absoluteValueArray[0] = 0;
+  } else {
+      _absoluteValueArray[0] = _absoluteValueArray[0] - LOW_PEAK_SUPPRESSION;
+  }
 
   // Value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {

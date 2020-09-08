@@ -15,7 +15,7 @@
 // ADC
 #define AUX_VREF 2.56
 #define ADC_CHANNELS 1024
-#define ADC_PRESCALE_32                           // 32 = ~40 kHz sampling
+#define ADC_PRESCALE_32                             // 32 = ~40 kHz sampling
 //#define ADC_PRESCALE_64                             // ~20 kHz sampling
 
 // I2C
@@ -25,7 +25,7 @@
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 2
+#define DEBUG_LEVEL 0
 #define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -42,8 +42,9 @@ const int FFT_NOISE_FLOOR = 3;                      // Anything less than 3 will
 
 /* LEDs */
 
+const unsigned int FFT_FADING_FACTOR = 4;          // How fast the peaks fade in peak detection mode, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
-const unsigned int REFRESH_INTERVAL = 50;           // How often to light up a new LED (ms)
+const unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
 const unsigned int COLOR_SENSITIVITY = 10;          // Overall sensitivity
 const unsigned int RED_SENSITIVITY = 1;             // Sensitivity adjustment for red
 const unsigned int GREEN_SENSITIVITY = 5;           // Sensitivity adjustment for green
@@ -98,8 +99,6 @@ const int LED_UC_D = 10;
 
 const int TIP_SWITCH = 16;
 
-const int debugLED = 13;
-
 /* Arduino analog */
 const int audioSignalIn = 15;
 const int MSGEQ7analogOut = 14;
@@ -133,6 +132,8 @@ const unsigned char segA2 = 15;
 /* FFT */
 
 int8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
+uint16_t calculatedValueArray[FFT_DATA_SIZE/2];
+uint8_t fadingFactorArray[FFT_DATA_SIZE/2];
 
 /* LEDs */
 
@@ -195,6 +196,12 @@ void rotateLeds();
 /***********************************************************************************************************************/
 
 void setup() {
+
+  /* Pin settings on Arduino */
+
+  // I2C
+  Wire.begin();
+  Wire.setClock(100000);
   
   /* Serial communications setup */
   
@@ -203,7 +210,7 @@ void setup() {
     ;                                               // Needed for Atmega32U4
   }
   
-  // LEDs
+  /* LEDs */
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
 
   for(int i=0;i<NUM_LEDS;i++){
@@ -231,19 +238,14 @@ void setup() {
   }
   FastLED.show();
 
-  // ADC
-  analogReference(DEFAULT);
+  /* FFT */
 
-  /* Pin settings on Arduino */
+  // Zero the averaging / peak detection array
+  for (int i = 0; i < FFT_DATA_SIZE/2; i++){
+    calculatedValueArray[i] = 0;
+    fadingFactorArray[i] = 0;
+  }
 
-  // LEDs
-  pinMode(debugLED, OUTPUT);
-  digitalWrite(debugLED, LOW);
-
-  // I2C
-  Wire.begin();
-  Wire.setClock(100000);
-  
   /* Pin settings on MCP23017 */
 
   // Release from reset, not in use
@@ -272,6 +274,8 @@ void setup() {
   }
 
   /* ADC */
+
+  analogReference(DEFAULT);
 
   // ADC conversion takes 14.5 clock cycles
   
@@ -360,6 +364,7 @@ void loop() {
 
     for (int i = 0; i < FFT_DATA_SIZE; i++) {
       Serial.println(_absoluteValueArray[i]);
+      //Serial.println(calculatedValueArray[i]);
     }
 
     _last_post_time = millis();
@@ -392,14 +397,14 @@ void machine_state1() {
     return;
   }
 
-  int _absoluteValueArray[FFT_DATA_SIZE];
+  int _absoluteValueArray[FFT_DATA_SIZE/2];
 
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
+  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
   }
 
 #if DEBUG_LEVEL > 3
-  for (int i = 0; i < 5; i++) {
+  for (int i = BIN_ONE_TH; i < 5; i++) {
     Serial.print(i);
     Serial.print(": ");
     Serial.print(_absoluteValueArray[i]);
@@ -409,11 +414,6 @@ void machine_state1() {
   Serial.println("");
 #endif
 
-  uint16_t _redValue = 0;
-  uint16_t _greenValue = 0;
-  uint16_t _blueValue = 0;
-  uint16_t _brightnessValue = 0;
-
   // Suppress the low frequency peak
   if(_absoluteValueArray[0] < LOW_PEAK_SUPPRESSION) {
       _absoluteValueArray[0] = 0;
@@ -421,24 +421,50 @@ void machine_state1() {
       _absoluteValueArray[0] = _absoluteValueArray[0] - LOW_PEAK_SUPPRESSION;
   }
 
+  // Peak detection and fading
+  // Doesn't work well in noisy environment
+  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
+    if (calculatedValueArray[i] < _absoluteValueArray[i]) {
+      calculatedValueArray[i] = _absoluteValueArray[i];  
+    } else if (fadingFactorArray[i] >= FFT_FADING_FACTOR) {
+      if (calculatedValueArray[i] > 0) {
+        calculatedValueArray[i]--;
+      }
+      fadingFactorArray[i] = 0;
+    } else {
+      fadingFactorArray[i]++;
+    }
+  }
+
+//  // No processing
+//  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
+//    calculatedValueArray[i] = _absoluteValueArray[i];  
+//  }
+
+
+  uint16_t _redValue = 0;
+  uint16_t _greenValue = 0;
+  uint16_t _blueValue = 0;
+  uint16_t _brightnessValue = 0;
+
   // Value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
-    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
-      _redValue += _absoluteValueArray[i];
+    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+      _redValue += calculatedValueArray[i];
     }
   }
 
   // Value for green LED
   for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
-    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
-      _greenValue += _absoluteValueArray[i];
+    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+      _greenValue += calculatedValueArray[i];
     }
   }
 
   // Value for blue LED
   for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
-    if(_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
-      _blueValue += _absoluteValueArray[i];
+    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+      _blueValue += calculatedValueArray[i];
     }
   }
 

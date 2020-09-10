@@ -25,7 +25,7 @@
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 0
+#define DEBUG_LEVEL 1
 #define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -42,7 +42,7 @@ const int FFT_NOISE_FLOOR = 3;                      // Anything less than 3 will
 
 /* LEDs */
 
-const unsigned int FFT_FADING_FACTOR = 4;          // How fast the peaks fade in peak detection mode, bigger value -> less fading
+const unsigned int FFT_FADING_FACTOR = 3;          // How fast the peaks fade in peak detection mode, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
 const unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
 const unsigned int COLOR_SENSITIVITY = 10;          // Overall sensitivity
@@ -182,13 +182,14 @@ float readAmplitude(int _pin);
 /* Functions */
 byte I2C_command(byte _command);
 void readButtons(void);
+uint8_t colorMap(uint32_t _value);
 
 /* FFT */
 
 void FFTsample(void);
 
 /* LED */
-void setLedColor(uint8_t brightness, uint8_t red, uint8_t green, uint8_t blue);
+//void setLedColor(uint8_t brightness, uint8_t red, uint8_t green, uint8_t blue);
 void rotateLeds();
 
 /***********************************************************************************************************************/
@@ -206,9 +207,9 @@ void setup() {
   /* Serial communications setup */
   
   Serial.begin(SERIAL_BAUD_RATE);
-  while(!Serial){
-    ;                                               // Needed for Atmega32U4
-  }
+//  while(!Serial){
+//    ;                                               // If you want the code to only start when you open serial monitor
+//  }
   
   /* LEDs */
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
@@ -356,14 +357,23 @@ void loop() {
 //    Serial.print(F("Cycle: "));
 //    Serial.println(cycle_count);
 
+//#if DEBUG_LEVEL > 0
+//  Serial.print("LEDs: ");
+//  Serial.print(red);
+//  Serial.print(", ");
+//  Serial.print(green);
+//  Serial.print(", ");
+//  Serial.println(blue);
+//#endif
+
     int _absoluteValueArray[FFT_DATA_SIZE];
 
-    for (int i = 0; i < FFT_DATA_SIZE; i++) {
-      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
-    }
+//    for (int i = 0; i < FFT_DATA_SIZE; i++) {
+//      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+//    }
 
-    for (int i = 0; i < FFT_DATA_SIZE; i++) {
-      Serial.println(_absoluteValueArray[i]);
+    for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
+      //Serial.println(_absoluteValueArray[i]);
       //Serial.println(calculatedValueArray[i]);
     }
 
@@ -380,6 +390,11 @@ void loop() {
 
 void machine_state1() {
 
+  uint16_t _redValue = 0;
+  uint16_t _greenValue = 0;
+  uint16_t _blueValue = 0;
+  uint16_t _brightnessValue = 0;
+
   FFTsample();
 
 #if DEBUG_LEVEL > 4
@@ -392,16 +407,35 @@ void machine_state1() {
   }
 #endif
 
+  // FFT with 2^7 bins
   if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
+#if DEBUG_LEVEL > 4
     Serial.println(F("Error in FFT"));
+#endif
     return;
   }
 
-  int _absoluteValueArray[FFT_DATA_SIZE/2];
+  uint16_t _absoluteValueArray[FFT_DATA_SIZE/2];
+//  uint8_t _SignalLevel = 0;
+//  uint8_t _highestBin = 129;
 
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+    //_absoluteValueArray[i] = (long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i];
+//    if (_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
+//      _SignalLevel++;
+//      Serial.print(i);
+//      Serial.print(": ");
+//      Serial.print(_absoluteValueArray[i]);
+//      Serial.print(", ");
+//        _absoluteValueArray[i] = 10;
+//    }
+//    Serial.println("");
   }
+
+//  if(_SignalLevel > 0 && _SignalLevel < 10) {
+//    _greenValue = 10;
+//  }
 
 #if DEBUG_LEVEL > 3
   for (int i = BIN_ONE_TH; i < 5; i++) {
@@ -425,10 +459,14 @@ void machine_state1() {
   // Doesn't work well in noisy environment
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     if (calculatedValueArray[i] < _absoluteValueArray[i]) {
-      calculatedValueArray[i] = _absoluteValueArray[i];  
-    } else if (fadingFactorArray[i] >= FFT_FADING_FACTOR) {
-      if (calculatedValueArray[i] > 0) {
-        calculatedValueArray[i]--;
+      calculatedValueArray[i] = _absoluteValueArray[i];
+      fadingFactorArray[i] = 0;
+    } 
+    else if (fadingFactorArray[i] >= FFT_FADING_FACTOR) {
+      if (calculatedValueArray[i] > 10) {
+        calculatedValueArray[i] -= 10;
+      } else {
+        calculatedValueArray[i] = 0;
       }
       fadingFactorArray[i] = 0;
     } else {
@@ -439,41 +477,67 @@ void machine_state1() {
 //  // No processing
 //  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
 //    calculatedValueArray[i] = _absoluteValueArray[i];  
+//  } 
+
+//  // Value for red LED
+//  for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
+//    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+//      _redValue += calculatedValueArray[i];
+//    }
 //  }
-
-
-  uint16_t _redValue = 0;
-  uint16_t _greenValue = 0;
-  uint16_t _blueValue = 0;
-  uint16_t _brightnessValue = 0;
+//
+//  // Value for green LED
+//  for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
+//    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+//      _greenValue += calculatedValueArray[i];
+//    }
+//  }
+//
+//  // Value for blue LED
+//  for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
+//    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
+//      _blueValue += calculatedValueArray[i];
+//    }
+//  }
 
   // Value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
-    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
-      _redValue += calculatedValueArray[i];
+    if(calculatedValueArray[i] > (_redValue + FFT_NOISE_FLOOR)) {
+      _redValue = calculatedValueArray[i]*3;
     }
   }
 
   // Value for green LED
   for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
-    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
-      _greenValue += calculatedValueArray[i];
+    if(calculatedValueArray[i] > (_greenValue + FFT_NOISE_FLOOR)) {
+      _greenValue = calculatedValueArray[i]*6;
     }
   }
 
   // Value for blue LED
   for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
-    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
-      _blueValue += calculatedValueArray[i];
+    if(calculatedValueArray[i] > (_blueValue + FFT_NOISE_FLOOR)) {
+      _blueValue = calculatedValueArray[i]*9;
     }
   }
+
+  red = _redValue;
+  green = _greenValue;
+  blue = _blueValue;
 
   // Brightness value
   //_brightnessValue = _redValue + _greenValue + _blueValue;
 
-  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY/RED_SENSITIVITY, 0, 255);
-  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255);
-  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY/BLUE_SENSITIVITY, 0, 255);
+  // ALL MAP FUNCTIONS OVERFLOW
+
+//  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY/RED_SENSITIVITY, 0, 255);
+//  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255);
+//
+//  if(map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255) > 255)
+//  {
+//    Serial.println("OVERFLOW");
+//  }
+//  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY/BLUE_SENSITIVITY, 0, 255);
   //brightness = map(_brightnessValue, 0, (FFT_DATA_SIZE/2 - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
     
   return;
@@ -652,12 +716,12 @@ void FFTsample(void) {
   }
 }
 
-void setLedColorBuffer(uint8_t _brightness, uint8_t _red, uint8_t _green, uint8_t _blue) {
-  brightness = _brightness;
-  red = _red;
-  green = _green;
-  blue = _blue;
-}
+//void setLedColorBuffer(uint8_t _brightness, uint8_t _red, uint8_t _green, uint8_t _blue) {
+//  brightness = _brightness;
+//  red = _red;
+//  green = _green;
+//  blue = _blue;
+//}
 
 void rotateLeds() {
 
@@ -665,7 +729,7 @@ void rotateLeds() {
         leds[i] = leds[i-1];
       }
       
-#if DEBUG_LEVEL > 3
+#if DEBUG_LEVEL > 0
   Serial.print("LEDs: ");
   Serial.print(red);
   Serial.print(", ");
@@ -678,4 +742,8 @@ void rotateLeds() {
   //leds[0].fadeLightBy(brightness);
   
   FastLED.show();
+}
+
+uint8_t colorMap(uint32_t _value) {
+  return 100;
 }

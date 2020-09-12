@@ -42,18 +42,30 @@ const int FFT_NOISE_FLOOR = 3;                      // Anything less than 3 will
 
 /* LEDs */
 
-const unsigned int FFT_FADING_FACTOR = 3;          // How fast the peaks fade in peak detection mode, bigger value -> less fading
+const unsigned int FFT_FADING_DELAY = 1;           // How fast the peaks fade in peak detection mode, bigger value -> less fading
+const unsigned int FFT_FADING_AMOUNT = 5;
+const unsigned int MAX_AMPLITUDE_FADING_FACTOR = 3; // How fast the max amplitude value fades, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
 const unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
-const unsigned int COLOR_SENSITIVITY = 10;          // Overall sensitivity
+const unsigned int COLOR_SENSITIVITY = 4;          // Overall sensitivity
 const unsigned int RED_SENSITIVITY = 1;             // Sensitivity adjustment for red
 const unsigned int GREEN_SENSITIVITY = 5;           // Sensitivity adjustment for green
-const unsigned int BLUE_SENSITIVITY = 50;           // Sensitivity adjustment for blue
+const unsigned int BLUE_SENSITIVITY = 9;           // Sensitivity adjustment for blue
 const unsigned int NUM_LEDS = 100;
 
 const unsigned int BIN_ONE_TH_HZ = 0;               // Frequencies below this will be ignored
 const unsigned int BIN_TWO_TH_HZ = 400;             // f below this will light red leds, above green
 const unsigned int BIN_THREE_TH_HZ = 800;           // f above this will light blue leds
+
+/* Effects */
+
+// React to large amplitude signals, even if the event is too short for FFT
+// Triggers very often with music
+//#define AMPLITUDE_DETECTION
+
+// Hold peaks in FFT spectrum, makes the effect less flashy
+// Can have adverse effects in noisy environment
+#define FFT_PEAK_HOLD
 
 /* Other */
 
@@ -128,6 +140,11 @@ const unsigned char segA2 = 15;
 /***********************************************************************************************************************/
 /*                                                   VARIABLES                                                         */
 /***********************************************************************************************************************/
+
+/* ADC */
+
+uint16_t maxAmplitude = 0;
+uint8_t maxAmplitudeFading = 0;
 
 /* FFT */
 
@@ -214,6 +231,7 @@ void setup() {
   /* LEDs */
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
 
+  // Check the LEDs
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB(25, 0, 0);
   }
@@ -353,32 +371,24 @@ void loop() {
   if((_last_post_time + POST_INTERVAL) < millis())
   {
     // Debug info
-//    Serial.println(F("debugging info:"));
-//    Serial.print(F("Cycle: "));
-//    Serial.println(cycle_count);
 
-//#if DEBUG_LEVEL > 0
-//  Serial.print("LEDs: ");
-//  Serial.print(red);
-//  Serial.print(", ");
-//  Serial.print(green);
-//  Serial.print(", ");
-//  Serial.println(blue);
+//#if DEBUG_LEVEL > 4
+//    Serial.print("LEDs: ");
+//    Serial.print(red);
+//    Serial.print(", ");
+//    Serial.print(green);
+//    Serial.print(", ");
+//    Serial.println(blue);
 //#endif
 
-    int _absoluteValueArray[FFT_DATA_SIZE];
-
-//    for (int i = 0; i < FFT_DATA_SIZE; i++) {
-//      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+//#if DEBUG_LEVEL > 3
+//    for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
+//      Serial.println(calculatedValueArray[i]);
 //    }
-
-    for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
-      //Serial.println(_absoluteValueArray[i]);
-      //Serial.println(calculatedValueArray[i]);
-    }
+//#endif
 
     _last_post_time = millis();
-    cycle_count++;
+//    cycle_count++;
 //    Serial.println("------");
   }
 #endif
@@ -397,16 +407,6 @@ void machine_state1() {
 
   FFTsample();
 
-#if DEBUG_LEVEL > 4
-  Serial.println(100);
-  Serial.println(0);
-  Serial.println(0);
-  Serial.println(0);
-  for (int i = 0; i < FFT_DATA_SIZE; i++) {
-    Serial.println(FFTdata[i]);
-  }
-#endif
-
   // FFT with 2^7 bins
   if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
 #if DEBUG_LEVEL > 4
@@ -422,31 +422,7 @@ void machine_state1() {
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
     //_absoluteValueArray[i] = (long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i];
-//    if (_absoluteValueArray[i] > FFT_NOISE_FLOOR) {
-//      _SignalLevel++;
-//      Serial.print(i);
-//      Serial.print(": ");
-//      Serial.print(_absoluteValueArray[i]);
-//      Serial.print(", ");
-//        _absoluteValueArray[i] = 10;
-//    }
-//    Serial.println("");
   }
-
-//  if(_SignalLevel > 0 && _SignalLevel < 10) {
-//    _greenValue = 10;
-//  }
-
-#if DEBUG_LEVEL > 3
-  for (int i = BIN_ONE_TH; i < 5; i++) {
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.print(_absoluteValueArray[i]);
-    Serial.print(", ");
-    delay(10);
-  }
-  Serial.println("");
-#endif
 
   // Suppress the low frequency peak
   if(_absoluteValueArray[0] < LOW_PEAK_SUPPRESSION) {
@@ -455,16 +431,16 @@ void machine_state1() {
       _absoluteValueArray[0] = _absoluteValueArray[0] - LOW_PEAK_SUPPRESSION;
   }
 
+#ifdef FFT_PEAK_HOLD
   // Peak detection and fading
-  // Doesn't work well in noisy environment
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     if (calculatedValueArray[i] < _absoluteValueArray[i]) {
       calculatedValueArray[i] = _absoluteValueArray[i];
       fadingFactorArray[i] = 0;
     } 
-    else if (fadingFactorArray[i] >= FFT_FADING_FACTOR) {
-      if (calculatedValueArray[i] > 10) {
-        calculatedValueArray[i] -= 10;
+    else if (fadingFactorArray[i] >= FFT_FADING_DELAY) {
+      if (calculatedValueArray[i] > FFT_FADING_AMOUNT) {
+        calculatedValueArray[i] -= FFT_FADING_AMOUNT;
       } else {
         calculatedValueArray[i] = 0;
       }
@@ -473,12 +449,14 @@ void machine_state1() {
       fadingFactorArray[i]++;
     }
   }
+#endif
 
 //  // No processing
 //  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
 //    calculatedValueArray[i] = _absoluteValueArray[i];  
 //  } 
 
+//  //Integrate over full spectrum
 //  // Value for red LED
 //  for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
 //    if(calculatedValueArray[i] > FFT_NOISE_FLOOR) {
@@ -503,21 +481,21 @@ void machine_state1() {
   // Value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
     if(calculatedValueArray[i] > (_redValue + FFT_NOISE_FLOOR)) {
-      _redValue = calculatedValueArray[i]*3;
+      _redValue = calculatedValueArray[i] * RED_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
 
   // Value for green LED
   for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
     if(calculatedValueArray[i] > (_greenValue + FFT_NOISE_FLOOR)) {
-      _greenValue = calculatedValueArray[i]*6;
+      _greenValue = calculatedValueArray[i] * GREEN_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
 
   // Value for blue LED
   for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
     if(calculatedValueArray[i] > (_blueValue + FFT_NOISE_FLOOR)) {
-      _blueValue = calculatedValueArray[i]*9;
+      _blueValue = calculatedValueArray[i] * BLUE_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
 
@@ -525,20 +503,25 @@ void machine_state1() {
   green = _greenValue;
   blue = _blueValue;
 
-  // Brightness value
-  //_brightnessValue = _redValue + _greenValue + _blueValue;
+#ifdef AMPLITUDE_DETECTION
+Serial.println("DISABLED");
+  if (maxAmplitudeFading >= MAX_AMPLITUDE_FADING_FACTOR) {
+    if (maxAmplitude > 10) {
+        maxAmplitude -= 10;
+      } else {
+        maxAmplitude = 0;
+      }
+      maxAmplitudeFading = 0;
+    } else {
+      maxAmplitudeFading++;
+    }
 
-  // ALL MAP FUNCTIONS OVERFLOW
-
-//  red = map(_redValue, 0, (BIN_TWO_TH - BIN_ONE_TH)*255/COLOR_SENSITIVITY/RED_SENSITIVITY, 0, 255);
-//  green = map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255);
-//
-//  if(map(_greenValue, 0, (BIN_THREE_TH - BIN_TWO_TH)*255/COLOR_SENSITIVITY/GREEN_SENSITIVITY, 0, 255) > 255)
-//  {
-//    Serial.println("OVERFLOW");
-//  }
-//  blue = map(_blueValue, 0, (FFT_DATA_SIZE/2 - BIN_THREE_TH)*255/COLOR_SENSITIVITY/BLUE_SENSITIVITY, 0, 255);
-  //brightness = map(_brightnessValue, 0, (FFT_DATA_SIZE/2 - BIN_ONE_TH)*255/COLOR_SENSITIVITY, 0, 255);
+  if (((red + blue + green) < 5) && (maxAmplitude > 10)) {
+    red += maxAmplitude*2;
+    green += maxAmplitude*2;
+    blue += maxAmplitude*2;
+  }
+#endif
     
   return;
 }
@@ -713,15 +696,11 @@ void FFTsample(void) {
   // With a small cost to sample rate
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     FFTdata[i] = map(rawResults[i], 0, 1023, 0, 255) - 128;
+    if (abs(FFTdata[i]) > maxAmplitude) {
+      maxAmplitude = abs(FFTdata[i]);
+    }
   }
 }
-
-//void setLedColorBuffer(uint8_t _brightness, uint8_t _red, uint8_t _green, uint8_t _blue) {
-//  brightness = _brightness;
-//  red = _red;
-//  green = _green;
-//  blue = _blue;
-//}
 
 void rotateLeds() {
 
@@ -729,17 +708,18 @@ void rotateLeds() {
         leds[i] = leds[i-1];
       }
       
-#if DEBUG_LEVEL > 0
-  Serial.print("LEDs: ");
+#if DEBUG_LEVEL > 4
+//  Serial.print("LEDs: ");
   Serial.print(red);
   Serial.print(", ");
   Serial.print(green);
   Serial.print(", ");
-  Serial.println(blue);
+  Serial.print(blue);
+  Serial.print(", ");
+  Serial.println(maxAmplitude);
 #endif
-  
+
   leds[0] = CRGB(red, green, blue);
-  //leds[0].fadeLightBy(brightness);
   
   FastLED.show();
 }

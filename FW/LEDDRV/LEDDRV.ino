@@ -25,7 +25,7 @@
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 1
+#define DEBUG_LEVEL 0
 #define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -42,8 +42,8 @@ const int FFT_NOISE_FLOOR = 4;                      // Anything less than 3 will
 
 /* LEDs */
 
-const unsigned int FFT_FADING_DELAY = 1;            // How fast the peaks fade in peak detection mode, bigger value -> less fading
-const unsigned int FFT_FADING_AMOUNT = 5;
+unsigned int FFT_FADING_DELAY = 1;                  // How fast the peaks fade in peak detection mode, bigger value -> less fading
+unsigned int FFT_FADING_AMOUNT = 5;
 const unsigned int MAX_AMPLITUDE_FADING_FACTOR = 3; // How fast the max amplitude value fades, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
 const unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
@@ -177,8 +177,8 @@ byte cycle_count = 0;
 
 // enum type
 enum machine_state_list {
-  music,
-  amplitude,
+  musicRunningLeds,
+  musicFullStrip,
   off,
   fault,
   unknown
@@ -190,7 +190,7 @@ machine_state_list machine_state = unknown;
 /*                                                   FUNCTIONS                                                         */
 /***********************************************************************************************************************/
 
-void machine_state1();
+void byteFFTanalysis();
 void machine_state2();
 
 /* Analog in */
@@ -207,6 +207,7 @@ void FFTsample(void);
 /* LED */
 //void setLedColor(uint8_t brightness, uint8_t red, uint8_t green, uint8_t blue);
 void rotateLeds(void);
+void setStripColor(void);
 void testLeds(void);
 
 /***********************************************************************************************************************/
@@ -222,12 +223,14 @@ void setup() {
   Wire.setClock(100000);
   
   /* Serial communications setup */
-  
+
+#if DEBUG_LEVEL > 0
   Serial.begin(SERIAL_BAUD_RATE);
 //  while(!Serial){
 //    ;                                               // If you want the code to only start when you open serial monitor
 //  }
-  
+#endif
+
   /* LEDs */
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
 
@@ -297,6 +300,9 @@ void setup() {
   Serial.println(F(" bit/s"));
 #endif
 
+  // Set initial machine state
+  machine_state = musicRunningLeds;
+
   /* Setup complete */
 
 #if DEBUG_LEVEL > 2
@@ -311,16 +317,18 @@ void setup() {
 
 void loop() { 
 
+  bool runningLeds = HIGH;
+
   // State machine
-  machine_state = music;
-  
   switch(machine_state) {
-    case music:
-      machine_state1();
+    case musicRunningLeds:
+      byteFFTanalysis();
+      runningLeds = HIGH;
       break;
 
-    case amplitude:
-      machine_state2();
+    case musicFullStrip:
+      byteFFTanalysis();
+      runningLeds = LOW;
       break;
 
     case fault:
@@ -337,8 +345,12 @@ void loop() {
 
   if((_last_refresh_time + REFRESH_INTERVAL) < millis())
   {
-    // Causes distortion in analog signal with max gain
-    rotateLeds();
+    if(runningLeds) {
+      rotateLeds();
+    } else {
+      setStripColor();
+    }
+    
     _last_refresh_time = millis();
   }
 
@@ -374,7 +386,7 @@ void loop() {
 /*                                             STATE MACHINE 1:                                                        */
 /***********************************************************************************************************************/
 
-void machine_state1() {
+void byteFFTanalysis() {
 
   uint16_t _redValue = 0;
   uint16_t _greenValue = 0;
@@ -563,16 +575,14 @@ void readButtons() {
 
   if(UIButton[0].pressed())
   {
-#if DEBUG_LEVEL > 3
+#if DEBUG_LEVEL > 1
     Serial.print(F("Pressed button: "));
     Serial.println(0);
 #endif
-    //sevenSeg[0].setNumber(0);
+
     sevenSeg[1].setNumber(0);
-    for(int j=0;j<NUM_LEDS;j++){
-      leds[j] = CRGB::Red;
-    }
-    FastLED.show();
+
+    machine_state = musicRunningLeds;
   }
   if(UIButton[1].pressed())
   {
@@ -581,32 +591,10 @@ void readButtons() {
     Serial.println(1);
 #endif
 
-    int _absoluteValueArray[FFT_DATA_SIZE];
-
-    for (int i = 0; i < FFT_DATA_SIZE; i++) {
-      _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
-    }
-
-#if DEBUG_LEVEL > 1
-    for (int i = 0; i < FFT_DATA_SIZE/2; i++) {
-      
-/* Formatting for plotter */
-Serial.println(_absoluteValueArray[i]);
-
-///* Formatting for serial monitor */
-//      Serial.print(i);
-//      Serial.print(": ");
-//      Serial.print(_absoluteValueArray[i]);
-//      Serial.print(", ");
-//      delay(10);
-
-    }
-//    Serial.println("");
-#endif
-
     sevenSeg[1].setNumber(1);
-
-    FastLED.show();
+    FFT_FADING_DELAY = 5;
+    FFT_FADING_AMOUNT = 1;
+    machine_state = musicFullStrip;
   }
   if(UIButton[2].pressed())
   {
@@ -695,8 +683,8 @@ void FFTsample(void) {
 void rotateLeds() {
 
   for(int i = NUM_LEDS - 1; i >= 1; i--){
-        leds[i] = leds[i-1];
-      }
+    leds[i] = leds[i-1];
+  }
       
 #if DEBUG_LEVEL > 4
 //  Serial.print("LEDs: ");
@@ -711,6 +699,13 @@ void rotateLeds() {
 
   leds[0] = CRGB(red, green, blue);
   
+  FastLED.show();
+}
+
+void setStripColor() {
+  for(int i = NUM_LEDS - 1; i >= 1; i--){
+    leds[i] = CRGB(red, green, blue);
+  }
   FastLED.show();
 }
 

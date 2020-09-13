@@ -152,6 +152,10 @@ int8_t FFTdata[FFT_DATA_SIZE], im[FFT_DATA_SIZE];
 uint16_t calculatedValueArray[FFT_DATA_SIZE/2];
 uint8_t fadingFactorArray[FFT_DATA_SIZE/2];
 
+uint8_t redFadingCounter = 0;
+uint8_t greenFadingCounter = 0;
+uint8_t blueFadingCounter = 0;
+
 /* LEDs */
 
 CRGB leds[NUM_LEDS];
@@ -322,11 +326,15 @@ void loop() {
   // State machine
   switch(machine_state) {
     case musicRunningLeds:
+      FFT_FADING_DELAY = 1;
+      FFT_FADING_AMOUNT = 30;
       byteFFTanalysis();
       runningLeds = HIGH;
       break;
 
     case musicFullStrip:
+      FFT_FADING_DELAY = 20;
+      FFT_FADING_AMOUNT = 5;
       byteFFTanalysis();
       runningLeds = LOW;
       break;
@@ -420,49 +428,95 @@ void byteFFTanalysis() {
   }
 
 #ifdef FFT_PEAK_HOLD
-  // Peak detection and fading
-  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
-    if (calculatedValueArray[i] < _absoluteValueArray[i]) {
-      calculatedValueArray[i] = _absoluteValueArray[i];
-      fadingFactorArray[i] = 0;
-    } 
-    else if (fadingFactorArray[i] >= FFT_FADING_DELAY) {
-      if (calculatedValueArray[i] > FFT_FADING_AMOUNT) {
-        calculatedValueArray[i] -= FFT_FADING_AMOUNT;
-      } else {
-        calculatedValueArray[i] = 0;
-      }
-      fadingFactorArray[i] = 0;
-    } else {
-      fadingFactorArray[i]++;
-    }
-  }
+//  // Peak detection and fading
+//  for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
+//    if (calculatedValueArray[i] < _absoluteValueArray[i]) {
+//      calculatedValueArray[i] = _absoluteValueArray[i];
+//      fadingFactorArray[i] = 0;
+//    } 
+//    else if (fadingFactorArray[i] >= FFT_FADING_DELAY) {
+//      if (calculatedValueArray[i] > FFT_FADING_AMOUNT) {
+//        calculatedValueArray[i] -= FFT_FADING_AMOUNT;
+//      } else {
+//        calculatedValueArray[i] = 0;
+//      }
+//      fadingFactorArray[i] = 0;
+//    } else {
+//      fadingFactorArray[i]++;
+//    }
+//  }
 
-  // Value for red LED
+  // Highest value for red LED
   for (int i = BIN_ONE_TH; i < BIN_TWO_TH; i++) {
-    if(calculatedValueArray[i] > (_redValue + FFT_NOISE_FLOOR)) {
-      _redValue = calculatedValueArray[i] * RED_SENSITIVITY * COLOR_SENSITIVITY;
+    if(_absoluteValueArray[i] > (_redValue + FFT_NOISE_FLOOR)) {
+      _redValue = _absoluteValueArray[i] * RED_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
 
-  // Value for green LED
+  // Highest value for green LED
   for (int i = BIN_TWO_TH; i < BIN_THREE_TH; i++) {
-    if(calculatedValueArray[i] > (_greenValue + FFT_NOISE_FLOOR)) {
-      _greenValue = calculatedValueArray[i] * GREEN_SENSITIVITY * COLOR_SENSITIVITY;
+    if(_absoluteValueArray[i] > (_greenValue + FFT_NOISE_FLOOR)) {
+      _greenValue = _absoluteValueArray[i] * GREEN_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
 
-  // Value for blue LED
+  // Highest value for blue LED
   for (int i = BIN_THREE_TH; i < FFT_DATA_SIZE/2; i++) {
-    if(calculatedValueArray[i] > (_blueValue + FFT_NOISE_FLOOR)) {
-      _blueValue = calculatedValueArray[i] * BLUE_SENSITIVITY * COLOR_SENSITIVITY;
+    if(_absoluteValueArray[i] > (_blueValue + FFT_NOISE_FLOOR)) {
+      _blueValue = _absoluteValueArray[i] * BLUE_SENSITIVITY * COLOR_SENSITIVITY;
     }
   }
+
+  if (_redValue > 255) {
+    red = 255;
+  } else if(_redValue > red) {
+    red = _redValue;
+    redFadingCounter = 0;
+  } else if(redFadingCounter >= FFT_FADING_DELAY) {
+      if (red > FFT_FADING_AMOUNT) {
+        red -= FFT_FADING_AMOUNT;
+      } else {
+        red = 0;
+      }
+  } else {
+    redFadingCounter++;
+  }
+
+  if (_greenValue > 255) {
+    green = 255;
+  } else if(_greenValue > green) {
+    green = _greenValue;
+    greenFadingCounter = 0;
+  } else if(greenFadingCounter >= FFT_FADING_DELAY) {
+      if (green > FFT_FADING_AMOUNT) {
+        green -= FFT_FADING_AMOUNT;
+      } else {
+        green = 0;
+      }
+  } else {
+    greenFadingCounter++;
+  }
+  
+  if (_blueValue > 255) {
+    blue = 255;
+  } else if(_blueValue > blue) {
+    blue = _blueValue;
+    blueFadingCounter = 0;
+  } else if(blueFadingCounter >= FFT_FADING_DELAY) {
+      if (blue > FFT_FADING_AMOUNT) {
+        blue -= FFT_FADING_AMOUNT;
+      } else {
+        blue = 0;
+      }
+  } else {
+    blueFadingCounter++;
+  }
+
 #else
   // No processing
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
     calculatedValueArray[i] = _absoluteValueArray[i];  
-  } 
+  }
   
   //Integrate over full spectrum
   // Value for red LED
@@ -485,7 +539,6 @@ void byteFFTanalysis() {
       _blueValue += calculatedValueArray[i];
     }
   }
-#endif
 
 if (_redValue < 255 ) {
   red = _redValue;
@@ -504,6 +557,7 @@ if (_blueValue < 255 ) {
 } else {
   blue = 255;
 }
+#endif
 
 #ifdef AMPLITUDE_DETECTION
 Serial.println("DISABLED");
@@ -592,8 +646,6 @@ void readButtons() {
 #endif
 
     sevenSeg[1].setNumber(1);
-    FFT_FADING_DELAY = 5;
-    FFT_FADING_AMOUNT = 1;
     machine_state = musicFullStrip;
   }
   if(UIButton[2].pressed())
@@ -703,7 +755,7 @@ void rotateLeds() {
 }
 
 void setStripColor() {
-  for(int i = NUM_LEDS - 1; i >= 1; i--){
+  for(int i = NUM_LEDS - 1; i >= 0; i--){
     leds[i] = CRGB(red, green, blue);
   }
   FastLED.show();

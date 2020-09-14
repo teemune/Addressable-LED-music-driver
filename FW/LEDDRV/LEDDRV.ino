@@ -57,6 +57,8 @@ const unsigned int BIN_ONE_TH_HZ = 0;               // Frequencies below this wi
 const unsigned int BIN_TWO_TH_HZ = 400;             // f below this will light red leds, above green
 const unsigned int BIN_THREE_TH_HZ = 800;           // f above this will light blue leds
 
+const unsigned int COLOR_QUANTITY = 99;
+
 /* Effects */
 
 // React to large amplitude signals, even if the event is too short for FFT
@@ -161,7 +163,10 @@ uint8_t blueFadingCounter = 0;
 CRGB leds[NUM_LEDS];
 unsigned long _last_refresh_time = 0;
 
-uint8_t brightness, red, green, blue = 0;
+uint8_t red, green, blue = 0;
+uint8_t brightness = 105;
+bool ledUpdate = LOW;
+uint8_t staticColorSelection = 0;
 
 /* 7 segment */
 
@@ -183,6 +188,8 @@ byte cycle_count = 0;
 enum machine_state_list {
   musicRunningLeds,
   musicFullStrip,
+  staticColor,
+  wait,
   off,
   fault,
   unknown
@@ -203,7 +210,7 @@ float readAmplitude(int _pin);
 /* Functions */
 byte I2C_command(byte _command);
 void readButtons(void);
-uint8_t colorMap(uint32_t _value);
+void setStaticColor(uint8_t _colorIndex);
 
 /* FFT */
 void FFTsample(void);
@@ -213,6 +220,9 @@ void FFTsample(void);
 void rotateLeds(void);
 void setStripColor(void);
 void testLeds(void);
+void dimmLedsBy(uint8_t _dimBy);
+void brightenLedsBy(uint8_t _brightenBy);
+void setLedBrightness(uint8_t _brightness);
 
 /***********************************************************************************************************************/
 /*                                                   SETUP LOOP                                                        */
@@ -330,6 +340,7 @@ void loop() {
       FFT_FADING_AMOUNT = 30;
       byteFFTanalysis();
       runningLeds = HIGH;
+      ledUpdate = HIGH;
       break;
 
     case musicFullStrip:
@@ -337,6 +348,15 @@ void loop() {
       FFT_FADING_AMOUNT = 5;
       byteFFTanalysis();
       runningLeds = LOW;
+      ledUpdate = HIGH;
+      break;
+
+    case staticColor:
+      setStaticColor(staticColorSelection);
+      //setLedBrightness(brightness);
+      ledUpdate = LOW;
+      FastLED.show();
+      machine_state = wait;
       break;
 
     case fault:
@@ -351,14 +371,13 @@ void loop() {
 
   readButtons();
 
-  if((_last_refresh_time + REFRESH_INTERVAL) < millis())
+  if((_last_refresh_time + REFRESH_INTERVAL) < millis() && ledUpdate)
   {
     if(runningLeds) {
       rotateLeds();
     } else {
       setStripColor();
     }
-    
     _last_refresh_time = millis();
   }
 
@@ -626,7 +645,8 @@ byte I2C_command(byte _command) {
 }
 
 void readButtons() {
-
+  
+  // Button 0
   if(UIButton[0].pressed())
   {
 #if DEBUG_LEVEL > 1
@@ -638,6 +658,8 @@ void readButtons() {
 
     machine_state = musicRunningLeds;
   }
+  
+  // Button 1
   if(UIButton[1].pressed())
   {
 #if DEBUG_LEVEL > 3
@@ -648,65 +670,66 @@ void readButtons() {
     sevenSeg[1].setNumber(1);
     machine_state = musicFullStrip;
   }
+  
+  // Button 2
   if(UIButton[2].pressed())
   {
 #if DEBUG_LEVEL > 3
     Serial.print(F("Pressed button: "));
     Serial.println(2);
 #endif
-    //sevenSeg[0].setNumber(2);
-    sevenSeg[1].setNumber(2);
-    for(int j=0;j<NUM_LEDS;j++){
-      leds[j] = CRGB::Blue;
+    machine_state = staticColor;
+    if(staticColorSelection < COLOR_QUANTITY + 1) {
+      staticColorSelection++;
     }
-    FastLED.show();
+    Serial.print(F("Color: "));
+    Serial.println(staticColorSelection);
   }
+
+  // Button 3
   if(UIButton[3].pressed())
   {
 #if DEBUG_LEVEL > 3
     Serial.print(F("Pressed button: "));
     Serial.println(3);
 #endif
-    //sevenSeg[0].setNumber(3);
-    sevenSeg[1].setNumber(3);
-    for(int j=0;j<NUM_LEDS;j++){
-      leds[j] = CRGB::White;
+    machine_state = staticColor;
+    if(staticColorSelection > 0) {
+      staticColorSelection--;
     }
-    FastLED.show();
+    Serial.print(F("Color: "));
+    Serial.println(staticColorSelection);
   }
+  
+  // Button 4
   if(UIButton[4].pressed())
   {
 #if DEBUG_LEVEL > 3
     Serial.print(F("Pressed button: "));
     Serial.println(4);
 #endif
-    sevenSeg[1].setNumber(4);
-    for(int j=0;j<NUM_LEDS;j++){
-      leds[j] = CRGB::Yellow;
-      delay(10);
-      FastLED.show();
+    machine_state = staticColor;
+    if(brightness < 255 - 25) {
+      brightness += 25;
+    } else {
+      brightness = 255;
     }
   }
+
+  // Button 5
   if(UIButton[5].pressed())
   {
 #if DEBUG_LEVEL > 3
     Serial.print(F("Pressed button: "));
     Serial.println(5);
 #endif
-    //sevenSeg[0].setNumber(i);
-    sevenSeg[1].setNumber(5);
-    int _dimming_value = 100;
-    for(int k=0;k<60;k++) {
-      for(int j=0;j<NUM_LEDS;j++){
-      //leds[j] = CRGB::Black;
-      //leds[j].nscale8_video(100 - 10 * j);
-      leds[j].fadeToBlackBy(k);
-      }
-      FastLED.show();
-      delay(10);
+    machine_state = staticColor;
+    if(brightness > 30) {
+      brightness -= 25;
+    } else {
+      brightness = 5;
     }
   }
-  
 }
 
 void FFTsample(void) {
@@ -761,8 +784,245 @@ void setStripColor() {
   FastLED.show();
 }
 
-uint8_t colorMap(uint32_t _value) {
-  return 100;
+void setStaticColor(uint8_t _colorIndex) {
+  switch(_colorIndex) {
+    
+    case 0:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Black;
+      }
+    break;
+
+    case 1:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Chocolate;
+      }
+    break;
+
+    case 2:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Brown;
+      }
+    break;
+
+    case 3:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Lavender;
+      }
+    break;
+
+    case 4:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::PaleVioletRed;
+      }
+    break;
+    
+    case 5:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Violet;
+      }
+    break;
+
+    case 6:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::MediumPurple;
+      }
+    break;
+
+    case 7:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Purple;
+      }
+    break;
+
+    case 8:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::DeepPink;
+      }
+    break;
+
+    case 9:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::HotPink;
+      }
+    break;
+
+    case 10:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Chartreuse;
+      }
+    break;
+
+    case 11:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Crimson;
+      }
+    break;
+    
+    case 12:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Red;
+      }
+    break;
+
+    case 13:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::OrangeRed;
+      }
+    break;
+
+    case 14:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::FireBrick;
+      }
+    break;
+
+    case 15:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Gold;
+      }
+    break;
+
+    case 16:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::YellowGreen;
+      }
+    break;
+
+    case 17:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::GreenYellow;
+      }
+    break;
+
+    case 18:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::LemonChiffon; // Looks white
+      }
+    break;
+
+    case 19:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Yellow;
+      }
+    break;
+    case 20:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Lime;
+      }
+    break;
+
+    case 21:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::SeaGreen;
+      }
+    break;
+
+    case 22:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Fuchsia;
+      }
+    break;
+    
+    case 23:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Green;
+      }
+    break;
+
+    case 24:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Turquoise;
+      }
+    break;
+
+    case 25:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Teal;
+      }
+    break;
+
+    case 26:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::LightCyan;
+      }
+    break;
+
+    case 27:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::LightBlue;
+      }
+    break;
+
+    case 28:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Plum;
+      }
+    break;
+
+    case 29:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Blue;
+      }
+    break;
+
+    case 30:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Khaki; // Looks white
+      }
+    break;
+
+    case 31:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Indigo;
+      }
+    break;
+
+    case 32:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::White;
+      }
+    break;
+    
+    default:
+    for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::Black;
+      }
+    break;
+  }
+  // Set brightenss
+  for(int i = NUM_LEDS - 1; i >= 0; i--) {
+    leds[i].fadeToBlackBy(255 - brightness);
+    //leds[i].fadeLightBy(255 - brightness);
+    
+  }
+  return;
+}
+
+void dimmLedsBy(uint8_t _dimBy) {
+  for(int i = NUM_LEDS - 1; i >= 0; i--) {
+    leds[i].fadeToBlackBy(_dimBy);
+  }
+  FastLED.show();
+}
+
+void brightenLedsBy(uint8_t _brightenBy) {
+  for(int i = NUM_LEDS - 1; i >= 0; i--) {
+    leds[i].fadeToBlackBy(_brightenBy);
+    leds[i].maximizeBrightness();
+  }
+  FastLED.show();
+}
+
+void setLedBrightness(uint8_t _brightness) {
+  for(int i = NUM_LEDS - 1; i >= 0; i--) {
+    leds[i].maximizeBrightness();
+    leds[i].fadeToBlackBy(_brightness);
+  }
+  Serial.print(F("Brightness: "));
+  Serial.println(_brightness);
+  //FastLED.setBrightness(BRIGHTNESS );
+  FastLED.show();
 }
 
 void testLeds() {

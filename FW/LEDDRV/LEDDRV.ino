@@ -657,6 +657,8 @@ void readButtons() {
     sevenSeg[1].setNumber(0);
 
     machine_state = musicRunningLeds;
+
+    delay(500);
   }
   
   // Button 1
@@ -669,6 +671,7 @@ void readButtons() {
 
     sevenSeg[1].setNumber(1);
     machine_state = musicFullStrip;
+    delay(500);
   }
   
   // Button 2
@@ -684,6 +687,7 @@ void readButtons() {
     }
     Serial.print(F("Color: "));
     Serial.println(staticColorSelection);
+    delay(500);
   }
 
   // Button 3
@@ -699,6 +703,7 @@ void readButtons() {
     }
     Serial.print(F("Color: "));
     Serial.println(staticColorSelection);
+    delay(500);
   }
   
   // Button 4
@@ -714,6 +719,7 @@ void readButtons() {
     } else {
       brightness = 255;
     }
+    delay(500);
   }
 
   // Button 5
@@ -729,6 +735,7 @@ void readButtons() {
     } else {
       brightness = 5;
     }
+    delay(500);
   }
 }
 
@@ -795,190 +802,125 @@ void setStaticColor(uint8_t _colorIndex) {
 
     case 1:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Chocolate;
+      leds[i] = CRGB::Indigo;
       }
     break;
 
     case 2:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Brown;
+      leds[i] = CRGB::Magenta;
       }
     break;
 
     case 3:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Lavender;
+      leds[i] = CRGB::Brown;
       }
     break;
 
     case 4:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::PaleVioletRed;
+      leds[i] = CRGB::DeepPink;
       }
     break;
-    
+
     case 5:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Violet;
+      leds[i] = CRGB::Crimson;
       }
     break;
 
     case 6:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::MediumPurple;
+      leds[i] = CRGB::Red;
       }
     break;
 
     case 7:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Purple;
+      leds[i] = CRGB::Chocolate;
       }
     break;
 
     case 8:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::DeepPink;
+      leds[i] = CRGB::OrangeRed;
       }
     break;
 
     case 9:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::HotPink;
+      leds[i] = CRGB::Orange;
       }
     break;
 
     case 10:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Chartreuse;
+      leds[i] = CRGB::Gold;
       }
     break;
 
     case 11:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Crimson;
-      }
-    break;
-    
-    case 12:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Red;
-      }
-    break;
-
-    case 13:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::OrangeRed;
-      }
-    break;
-
-    case 14:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::FireBrick;
-      }
-    break;
-
-    case 15:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Gold;
-      }
-    break;
-
-    case 16:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::YellowGreen;
-      }
-    break;
-
-    case 17:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::GreenYellow;
       }
     break;
 
-    case 18:
+    case 12:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::LemonChiffon; // Looks white
+      leds[i] = CRGB::Chartreuse;
       }
     break;
-
-    case 19:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Yellow;
-      }
-    break;
-    case 20:
+    
+    case 13:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::Lime;
       }
     break;
 
-    case 21:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::SeaGreen;
-      }
-    break;
-
-    case 22:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Fuchsia;
-      }
-    break;
-    
-    case 23:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Green;
-      }
-    break;
-
-    case 24:
+    case 14:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::Turquoise;
       }
     break;
 
-    case 25:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Teal;
-      }
-    break;
-
-    case 26:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::LightCyan;
-      }
-    break;
-
-    case 27:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::LightBlue;
-      }
-    break;
-
-    case 28:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Plum;
-      }
-    break;
-
-    case 29:
+    case 15:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::Blue;
       }
     break;
 
-    case 30:
+    case 16:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Khaki; // Looks white
+      leds[i] = CRGB::MediumAquamarine;
       }
     break;
 
-    case 31:
+    case 17:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Indigo;
+      leds[i] = CRGB::MediumPurple;
       }
     break;
 
-    case 32:
+    case 18:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::IndianRed;
+      }
+    break;
+
+    case 19:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::HotPink;
+      }
+    break;
+
+    case 20:
+      for(int i = NUM_LEDS - 1; i >= 0; i--){
+      leds[i] = CRGB::SandyBrown;
+      }
+    break;
+
+    case 21:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::White;
       }

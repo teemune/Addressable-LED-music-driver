@@ -1,4 +1,5 @@
 #include <FastLED.h>
+#include <EEPROM.h>
 #include <Wire.h>
 #include <fix_fft.h>
 #include "Adafruit_MCP23017.h"
@@ -22,6 +23,16 @@
 #define I2C_ADDR 0x20
 #define REG_HIGH_BYTE 0x00
 #define REG_LOW_BYTE 0xA3
+
+// EEPROM
+const unsigned int MODE_SETTING_ADDRESS = 0;
+const unsigned int COLOR_INDEX_SETTING_ADDRESS = 4;
+const unsigned int BRIGHTNESS_SETTING_ADDRESS = 8;
+const unsigned int STRIP_TYPE_SETTING_ADDRESS = 12;
+
+bool modeSettingChanged = LOW;
+bool colorSettingChanged = LOW;
+bool brightnessSettingChanged = LOW;
 
 /* Define debugging level */
 
@@ -57,8 +68,6 @@ const unsigned int BIN_ONE_TH_HZ = 0;               // Frequencies below this wi
 const unsigned int BIN_TWO_TH_HZ = 400;             // f below this will light red leds, above green
 const unsigned int BIN_THREE_TH_HZ = 800;           // f above this will light blue leds
 
-const unsigned int COLOR_QUANTITY = 99;
-
 /* Effects */
 
 // React to large amplitude signals, even if the event is too short for FFT
@@ -72,6 +81,9 @@ const unsigned int COLOR_QUANTITY = 99;
 /* Other */
 
 const unsigned int SEGMENT_REFRESH_INTERVAL = 500;  // (ms) Update rate for 7-segment display
+const unsigned int NUMBER_OF_MODES = 3;
+const unsigned int COLOR_QUANTITY = 21;
+const unsigned int MAX_BRIGHTNESS = 10;
 
 //#ifdef ADC_PRESCALE_32
 //  const unsigned int hzPerBin = 35000 / FFT_DATA_SIZE;
@@ -189,20 +201,8 @@ Button UIButton[NO_OF_BUTTONS];
 unsigned long _last_post_time = 0;
 byte cycle_count = 0;
 
-// enum type
-//enum machine_state_list {
-//  musicRunningLeds,
-//  musicFullStrip,
-//  staticColor,
-//  wait,
-//  off,
-//  fault,
-//  unknown
-//};
-//machine_state_list machine_state = unknown;
-
-uint8_t operationMode = 0;
-uint8_t operationModeSelection = 0;
+uint8_t operationMode = 1;
+uint8_t operationModeSelection = 1;
 /***********************************************************************************************************************/
 /*                                                   FUNCTIONS                                                         */
 /***********************************************************************************************************************/
@@ -321,8 +321,21 @@ void setup() {
   Serial.println(F(" bit/s"));
 #endif
 
-  // Set initial machine state
-  operationMode = 0;
+  // Set initial states
+  uint8_t _EEPROMsetting = EEPROM.read(MODE_SETTING_ADDRESS);
+  if( _EEPROMsetting >= 1 && _EEPROMsetting <= NUMBER_OF_MODES) {
+    operationMode = _EEPROMsetting;
+    operationModeSelection = _EEPROMsetting;
+  }
+  _EEPROMsetting = EEPROM.read(COLOR_INDEX_SETTING_ADDRESS);
+  if( _EEPROMsetting >= 1 && _EEPROMsetting <= COLOR_QUANTITY) {
+    staticColorSelection = _EEPROMsetting;
+  }
+  _EEPROMsetting = EEPROM.read(BRIGHTNESS_SETTING_ADDRESS);
+  if( _EEPROMsetting >= 0 && _EEPROMsetting <= MAX_BRIGHTNESS) {
+    brightness = _EEPROMsetting;
+    brightnessSelection = _EEPROMsetting;
+  }
 
   /* Setup complete */
 
@@ -344,7 +357,7 @@ void loop() {
   // State machine
   switch(operationMode) {
     // Music - running
-    case 0:
+    case 1:
       FFT_FADING_DELAY = 1;
       FFT_FADING_AMOUNT = 30;
       byteFFTanalysis();
@@ -353,7 +366,7 @@ void loop() {
       break;
 
     // Music - Full strip
-    case 1:
+    case 2:
       FFT_FADING_DELAY = 20;
       FFT_FADING_AMOUNT = 5;
       byteFFTanalysis();
@@ -362,7 +375,7 @@ void loop() {
       break;
 
     // Static Color
-    case 2:
+    case 3:
       setStaticColor(staticColorSelection);
       //setLedBrightness(brightness);
       ledUpdate = LOW;
@@ -394,12 +407,38 @@ void loop() {
     _last_refresh_time = millis();
   }
 
+  // Update 7-seg display
+  // Same function is used for writing EEPROM, as it is called when a certain time
+  // has elapsed from last keypress
   if((_last_7seg_refresh_time + SEGMENT_REFRESH_INTERVAL) < millis())
   {
     if(displayPausedSequences < 1) {
+      // 7 segment update
       uint8_t _amplitudeDisplay = (uint8_t)((float)maxAmplitude / 128.0 * 99.0);
-      Serial.println(_amplitudeDisplay);
       set7SegNumber(_amplitudeDisplay);
+
+      // EEPROM
+      if(modeSettingChanged) {
+        modeSettingChanged = LOW;
+        EEPROM.write(MODE_SETTING_ADDRESS, operationModeSelection);
+        #if DEBUG_MODE > 1
+          Serial.println(F("modeSettingChanged"));
+        #endif
+      }
+      if(colorSettingChanged) {
+        colorSettingChanged = LOW;
+        EEPROM.write(COLOR_INDEX_SETTING_ADDRESS, staticColorSelection);
+        #if DEBUG_MODE > 1
+          Serial.println(F("colorSettingChanged"));
+        #endif
+      }
+      if(brightnessSettingChanged) {
+        brightnessSettingChanged = LOW;
+        EEPROM.write(BRIGHTNESS_SETTING_ADDRESS, brightnessSelection);
+        #if DEBUG_MODE > 1
+          Serial.println(F("brightnessSettingChanged"));
+        #endif
+      }
     } else {
       displayPausedSequences--;
     }
@@ -671,14 +710,15 @@ byte I2C_command(byte _command) {
 
 void readButtons() {
   
-  // Button 0
+  // Button 0 - Mode up
   if(UIButton[0].pressed())
   {
+    modeSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(0);
     #endif
-    if(operationModeSelection < 2) {
+    if(operationModeSelection < NUMBER_OF_MODES) {
       operationModeSelection++;  
     }
     operationMode = operationModeSelection;
@@ -696,14 +736,15 @@ void readButtons() {
     delay(250);
   }
   
-  // Button 1
+  // Button 1 - Mode down
   if(UIButton[1].pressed())
   {
+    modeSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(1);
     #endif
-    if(operationModeSelection > 0) {
+    if(operationModeSelection > 1) {
       operationModeSelection--;  
     }
     operationMode = operationModeSelection;
@@ -719,16 +760,17 @@ void readButtons() {
     delay(250);
   }
   
-  // Button 2
+  // Button 2 - Color up
   if(UIButton[2].pressed())
   {
+    colorSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(2);
     #endif
     if(operationModeSelection == 2 || operationModeSelection == 3) {
       operationMode = operationModeSelection;
-      if(staticColorSelection < COLOR_QUANTITY + 1) {
+      if(staticColorSelection < COLOR_QUANTITY) {
         staticColorSelection++;
       }
       set7SegNumber(staticColorSelection);
@@ -741,20 +783,20 @@ void readButtons() {
       set7SegFlatLine();
       displayPausedSequences = 2;
     }
-    
     delay(250);
   }
   
-  // Button 3
+  // Button 3 - Color down
   if(UIButton[3].pressed())
   {
+    colorSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(3);
     #endif
     if(operationModeSelection == 2 || operationModeSelection == 3) {
       operationMode = operationModeSelection;
-      if(staticColorSelection > 0) {
+      if(staticColorSelection > 1) {
         staticColorSelection--;
       }
       set7SegNumber(staticColorSelection);
@@ -770,15 +812,16 @@ void readButtons() {
     delay(250);
   }
   
-  // Button 4
+  // Button 4 - Brightness up
   if(UIButton[4].pressed())
   {
+    brightnessSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(4);
     #endif
     if(operationModeSelection == 2 || operationModeSelection == 3) {
-      if(brightnessSelection < 10) {
+      if(brightnessSelection < MAX_BRIGHTNESS) {
         brightnessSelection++;
         brightness = brightnessSelection * 25 + 5;
       }
@@ -802,9 +845,10 @@ void readButtons() {
     delay(250);
   }
 
-  // Button 5
+  // Button 5 - Brightness down
   if(UIButton[5].pressed())
   {
+    brightnessSettingChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(5);
@@ -909,12 +953,6 @@ void setStripColor() {
 void setStaticColor(uint8_t _colorIndex) {
   switch(_colorIndex) {
     
-    case 0:
-      for(int i = NUM_LEDS - 1; i >= 0; i--){
-      leds[i] = CRGB::Black;
-      }
-    break;
-
     case 1:
       for(int i = NUM_LEDS - 1; i >= 0; i--){
       leds[i] = CRGB::Indigo;

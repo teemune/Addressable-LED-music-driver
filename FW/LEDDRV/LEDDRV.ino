@@ -71,6 +71,8 @@ const unsigned int COLOR_QUANTITY = 99;
 
 /* Other */
 
+const unsigned int SEGMENT_REFRESH_INTERVAL = 500;  // (ms) Update rate for 7-segment display
+
 //#ifdef ADC_PRESCALE_32
 //  const unsigned int hzPerBin = 35000 / FFT_DATA_SIZE;
 //#endif
@@ -145,7 +147,7 @@ const unsigned char segA2 = 15;
 
 /* ADC */
 
-uint16_t maxAmplitude = 0;
+uint8_t maxAmplitude = 0;
 uint8_t maxAmplitudeFading = 0;
 
 /* FFT */
@@ -173,6 +175,8 @@ uint8_t staticColorSelection = 1;
 /* 7 segment */
 
 MCP23017SevenSegDisplay sevenSeg[2];
+unsigned long _last_7seg_refresh_time = 0;
+uint8_t displayPausedSequences = 4;
 
 /* Buttons */
 
@@ -214,6 +218,7 @@ byte I2C_command(byte _command);
 void readButtons(void);
 void setStaticColor(uint8_t _colorIndex);
 void set7SegNumber (uint8_t _numberToDisplay);
+void set7SegFlatLine(void);
 
 /* FFT */
 void FFTsample(void);
@@ -334,6 +339,7 @@ void setup() {
 void loop() { 
 
   bool runningLeds = HIGH;
+  readButtons();
 
   // State machine
   switch(operationMode) {
@@ -364,16 +370,7 @@ void loop() {
       operationMode = 97;
       break;
 
-    // Changing color
-    case 3:
-      setStaticColor(staticColorSelection);
-      //setLedBrightness(brightness);
-      ledUpdate = LOW;
-      FastLED.show();
-      operationMode = 97;
-      break;
-
-    // wait
+    // wait for new commands
     case 97:
       break;
     // fault
@@ -387,8 +384,6 @@ void loop() {
       break;
   }
 
-  readButtons();
-
   if((_last_refresh_time + REFRESH_INTERVAL) < millis() && ledUpdate)
   {
     if(runningLeds) {
@@ -397,6 +392,18 @@ void loop() {
       setStripColor();
     }
     _last_refresh_time = millis();
+  }
+
+  if((_last_7seg_refresh_time + SEGMENT_REFRESH_INTERVAL) < millis())
+  {
+    if(displayPausedSequences < 1) {
+      uint8_t _amplitudeDisplay = (uint8_t)((float)maxAmplitude / 128.0 * 99.0);
+      Serial.println(_amplitudeDisplay);
+      set7SegNumber(_amplitudeDisplay);
+    } else {
+      displayPausedSequences--;
+    }
+    _last_7seg_refresh_time = millis();
   }
 
 // Debugging
@@ -667,155 +674,180 @@ void readButtons() {
   // Button 0
   if(UIButton[0].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(0);
-#endif
-    //machine_state = musicRunningLeds;
-    if(operationModeSelection < 3) {
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(0);
+    #endif
+    if(operationModeSelection < 2) {
       operationModeSelection++;  
     }
     operationMode = operationModeSelection;
     set7SegNumber(operationMode);
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Operation mode: "));
-    Serial.println(operationMode);
-#endif
+    // Display a demo to visualize selection
+    if(operationModeSelection == 0 || operationModeSelection == 1) {
+      red = 90;
+    }
+    
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Operation mode: "));
+      Serial.println(operationMode);
+    #endif
+    displayPausedSequences = 8;
     delay(250);
   }
   
   // Button 1
   if(UIButton[1].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(1);
-#endif
-    //machine_state = musicFullStrip;
-    //operationMode = 2;
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(1);
+    #endif
     if(operationModeSelection > 0) {
       operationModeSelection--;  
     }
     operationMode = operationModeSelection;
     set7SegNumber(operationMode);
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Operation mode: "));
-    Serial.println(operationMode);
-#endif
+    if(operationModeSelection == 0 || operationModeSelection == 1) {
+      red = 90;
+    }
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Operation mode: "));
+      Serial.println(operationMode);
+    #endif
+    displayPausedSequences = 8;
     delay(250);
   }
   
   // Button 2
   if(UIButton[2].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(2);
-#endif
-    //machine_state = staticColor;
-    operationMode = 2;
-    if(staticColorSelection < COLOR_QUANTITY + 1) {
-      staticColorSelection++;
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(2);
+    #endif
+    if(operationModeSelection == 2 || operationModeSelection == 3) {
+      operationMode = operationModeSelection;
+      if(staticColorSelection < COLOR_QUANTITY + 1) {
+        staticColorSelection++;
+      }
+      set7SegNumber(staticColorSelection);
+      #if DEBUG_LEVEL > 1
+        Serial.print(F("Color: "));
+        Serial.println(staticColorSelection);
+      #endif
+      displayPausedSequences = 8;
+    } else {
+      set7SegFlatLine();
+      displayPausedSequences = 2;
     }
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Color: "));
-    Serial.println(staticColorSelection);
-#endif
+    
     delay(250);
   }
-
+  
   // Button 3
   if(UIButton[3].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(3);
-#endif
-    operationMode = 2;
-    if(staticColorSelection > 0) {
-      staticColorSelection--;
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(3);
+    #endif
+    if(operationModeSelection == 2 || operationModeSelection == 3) {
+      operationMode = operationModeSelection;
+      if(staticColorSelection > 0) {
+        staticColorSelection--;
+      }
+      set7SegNumber(staticColorSelection);
+      #if DEBUG_LEVEL > 1
+        Serial.print(F("Color: "));
+        Serial.println(staticColorSelection);
+      #endif
+      displayPausedSequences = 8;
+    } else {
+      set7SegFlatLine();
+      displayPausedSequences = 2;
     }
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Color: "));
-    Serial.println(staticColorSelection);
-#endif
     delay(250);
   }
   
   // Button 4
   if(UIButton[4].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(4);
-#endif
-    if(brightnessSelection < 10) {
-      brightnessSelection++;
-      brightness = brightnessSelection * 25 + 5;
-    }
-    if(brightnessSelection == 10) {
-        brightness = 255;
-      } else {
-        brightness = brightnessSelection * 25;
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(4);
+    #endif
+    if(operationModeSelection == 2 || operationModeSelection == 3) {
+      if(brightnessSelection < 10) {
+        brightnessSelection++;
+        brightness = brightnessSelection * 25 + 5;
       }
-    // Update LEDs to change brightness
-    operationMode = 2;
-    set7SegNumber(brightnessSelection);
-//    if(brightness < 255 - 25) {
-//      brightness += 25;
-//    } else {
-//      brightness = 255;
-//    }
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Brightness: "));
-    Serial.println(brightness);
-#endif
+      if(brightnessSelection == 10) {
+          brightness = 255;
+        } else {
+          brightness = brightnessSelection * 25;
+        }
+      // Update LEDs to change brightness
+      operationMode = operationModeSelection;
+      set7SegNumber(brightnessSelection);
+      #if DEBUG_LEVEL > 1
+        Serial.print(F("Brightness: "));
+        Serial.println(brightness);
+      #endif
+      displayPausedSequences = 8;
+    } else {
+      set7SegFlatLine();
+      displayPausedSequences = 2;
+    }
     delay(250);
   }
 
   // Button 5
   if(UIButton[5].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(5);
-#endif
-    if(brightnessSelection > 0) {
-      brightnessSelection--;
-      brightness = brightnessSelection * 25;
-      // Update LEDs to change brightness
-      operationMode = 2;
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(5);
+    #endif
+    if(operationModeSelection == 2 || operationModeSelection == 3) {
+      if(brightnessSelection > 0) {
+        brightnessSelection--;
+        brightness = brightnessSelection * 25;
+        // Update LEDs to change brightness
+        operationMode = operationModeSelection;
+      }
+      set7SegNumber(brightnessSelection);
+      #if DEBUG_LEVEL > 1
+        Serial.print(F("Brightness: "));
+        Serial.println(brightness);
+      #endif
+      displayPausedSequences = 8;
+    } else {
+      displayPausedSequences = 2;
+      set7SegFlatLine();
     }
-    set7SegNumber(brightnessSelection);
-//    if(brightness > 30) {
-//      brightness -= 25;
-//    } else {
-//      brightness = 5;
-//    }
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Brightness: "));
-    Serial.println(brightness);
-#endif
     delay(250);
   }
   // Button 6
   if(UIButton[6].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(6);
-#endif
-
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(6);
+    #endif
+    displayPausedSequences = 2;
+    set7SegFlatLine();
     delay(250);
   }
   // Button 7
   if(UIButton[7].pressed())
   {
-#if DEBUG_LEVEL > 1
-    Serial.print(F("Pressed button: "));
-    Serial.println(7);
-#endif
-
+    #if DEBUG_LEVEL > 1
+      Serial.print(F("Pressed button: "));
+      Serial.println(7);
+    #endif
+    displayPausedSequences = 2;
+    set7SegFlatLine();
     delay(250);
   }
 }
@@ -823,6 +855,8 @@ void readButtons() {
 void FFTsample(void) {
 
   int rawResults[FFT_DATA_SIZE];
+
+  maxAmplitude = 0;
 
   for (int i = 0; i < FFT_DATA_SIZE; i++) {
     rawResults[i] = 0;
@@ -873,7 +907,6 @@ void setStripColor() {
 }
 
 void setStaticColor(uint8_t _colorIndex) {
-  set7SegNumber(_colorIndex);
   switch(_colorIndex) {
     
     case 0:
@@ -1085,4 +1118,10 @@ void set7SegNumber(uint8_t _numberToDisplay) {
   
   sevenSeg[0].setNumber(_leftNumber);
   sevenSeg[1].setNumber(_rightNumber);
+}
+
+void set7SegFlatLine() {
+  sevenSeg[0].flatLine();
+  sevenSeg[1].flatLine();
+  displayPausedSequences = 2;
 }

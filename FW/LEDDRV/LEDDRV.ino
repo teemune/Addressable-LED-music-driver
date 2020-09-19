@@ -46,7 +46,7 @@ unsigned int FFT_FADING_DELAY = 1;                  // How fast the peaks fade i
 unsigned int FFT_FADING_AMOUNT = 5;
 const unsigned int MAX_AMPLITUDE_FADING_FACTOR = 3; // How fast the max amplitude value fades, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
-const unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
+unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
 const unsigned int COLOR_SENSITIVITY = 5;           // Overall sensitivity, default 10
 const unsigned int RED_SENSITIVITY = 3;             // Sensitivity adjustment for red, default 3
 const unsigned int GREEN_SENSITIVITY = 5;           // Sensitivity adjustment for green, default 5
@@ -211,6 +211,7 @@ float readAmplitude(int _pin);
 byte I2C_command(byte _command);
 void readButtons(void);
 void setStaticColor(uint8_t _colorIndex);
+void set7SegNumber (uint8_t _numberToDisplay);
 
 /* FFT */
 void FFTsample(void);
@@ -247,7 +248,6 @@ void setup() {
 
   /* LEDs */
   FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
-
   testLeds();
 
   /* FFT */
@@ -658,7 +658,7 @@ void readButtons() {
 
     machine_state = musicRunningLeds;
 
-    delay(500);
+    delay(250);
   }
   
   // Button 1
@@ -671,7 +671,7 @@ void readButtons() {
 
     sevenSeg[1].setNumber(1);
     machine_state = musicFullStrip;
-    delay(500);
+    delay(250);
   }
   
   // Button 2
@@ -687,7 +687,7 @@ void readButtons() {
     }
     Serial.print(F("Color: "));
     Serial.println(staticColorSelection);
-    delay(500);
+    delay(250);
   }
 
   // Button 3
@@ -703,7 +703,7 @@ void readButtons() {
     }
     Serial.print(F("Color: "));
     Serial.println(staticColorSelection);
-    delay(500);
+    delay(250);
   }
   
   // Button 4
@@ -719,7 +719,7 @@ void readButtons() {
     } else {
       brightness = 255;
     }
-    delay(500);
+    delay(250);
   }
 
   // Button 5
@@ -735,7 +735,27 @@ void readButtons() {
     } else {
       brightness = 5;
     }
-    delay(500);
+    delay(250);
+  }
+  // Button 6
+  if(UIButton[6].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(6);
+#endif
+
+    delay(250);
+  }
+  // Button 7
+  if(UIButton[7].pressed())
+  {
+#if DEBUG_LEVEL > 3
+    Serial.print(F("Pressed button: "));
+    Serial.println(7);
+#endif
+
+    delay(250);
   }
 }
 
@@ -792,6 +812,7 @@ void setStripColor() {
 }
 
 void setStaticColor(uint8_t _colorIndex) {
+  set7SegNumber(_colorIndex);
   switch(_colorIndex) {
     
     case 0:
@@ -993,4 +1014,14 @@ void testLeds() {
     leds[i] = CRGB(0, 0, 0);
   }
   FastLED.show();
+}
+
+void set7SegNumber (uint8_t _numberToDisplay) {
+  uint8_t _leftNumber, _rightNumber = 0;
+
+  _leftNumber = _numberToDisplay / 10;
+  _rightNumber = _numberToDisplay % 10;
+  
+  sevenSeg[0].setNumber(_leftNumber);
+  sevenSeg[1].setNumber(_rightNumber);
 }

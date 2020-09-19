@@ -3,23 +3,24 @@
 #include <Arduino.h>
 
 byte numbersToDisplay[] = {
-  B00111111,  //  0
-  B00000110,  //  1
-  B01011011,  //  2
-  B01001111,  //  3
-  B01100110,  //  4
-  B01101101,  //  5
-  B01111101,  //  6
-  B00000111,  //  7
-  B01111111,  //  8
-  B01101111,  //  9
-  B01110111,  //  A
-  B01111100,  //  B
-  B00111001,  //  C
-  B01011110,  //  D
-  B01111001,  //  E
-  B01110001,  //  F
-  B01111001  //  Error
+  B00111111,  //  0: 0
+  B00000110,  //  1: 1
+  B01011011,  //  2: 2
+  B01001111,  //  3: 3
+  B01100110,  //  4: 4
+  B01101101,  //  5: 5
+  B01111101,  //  6: 6
+  B00000111,  //  7: 7
+  B01111111,  //  8: 8
+  B01101111,  //  9: 9
+  B01110111,  //  10: A
+  B01111100,  //  11: B
+  B00111001,  //  12: C
+  B01011110,  //  13: D
+  B01111001,  //  14: E
+  B01110001,  //  15: F
+  B01000000,  //  16: -
+  B01111001  //  17: Error
 };
 
 MCP23017SevenSegDisplay::MCP23017SevenSegDisplay(Adafruit_MCP23017 *_mcp_chip) {
@@ -61,6 +62,11 @@ void MCP23017SevenSegDisplay::setNumber(int _number)
       mcp_chip->digitalWrite(pins[i], bitRead(numbersToDisplay[_number],i));
     }
   }
+}
+
+void MCP23017SevenSegDisplay::flatLine(void)
+{
+  setNumber(16);
 }
 
 void MCP23017SevenSegDisplay::clearDisplay(void)

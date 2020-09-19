@@ -18,4 +18,5 @@ class MCP23017SevenSegDisplay {
   void init(Adafruit_MCP23017 *_mcp_chip, int _pin_a, int _pin_b, int _pin_c, int _pin_d, int _pin_e, int _pin_f, int _pin_g, int _pin_dp);
   void setNumber(int _number);
   void clearDisplay(void);
+  void flatLine(void);
 };

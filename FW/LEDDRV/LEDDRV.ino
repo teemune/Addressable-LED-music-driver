@@ -724,7 +724,7 @@ void readButtons() {
     operationMode = operationModeSelection;
     set7SegNumber(operationMode);
     // Display a demo to visualize selection
-    if(operationModeSelection == 0 || operationModeSelection == 1) {
+    if(operationModeSelection == 1 || operationModeSelection == 2) {
       red = 90;
     }
     
@@ -749,7 +749,7 @@ void readButtons() {
     }
     operationMode = operationModeSelection;
     set7SegNumber(operationMode);
-    if(operationModeSelection == 0 || operationModeSelection == 1) {
+    if(operationModeSelection == 1 || operationModeSelection == 2) {
       red = 90;
     }
     #if DEBUG_LEVEL > 1
@@ -768,7 +768,7 @@ void readButtons() {
       Serial.print(F("Pressed button: "));
       Serial.println(2);
     #endif
-    if(operationModeSelection == 2 || operationModeSelection == 3) {
+    if(operationModeSelection == 3 || operationModeSelection == 4) {
       operationMode = operationModeSelection;
       if(staticColorSelection < COLOR_QUANTITY) {
         staticColorSelection++;
@@ -794,7 +794,7 @@ void readButtons() {
       Serial.print(F("Pressed button: "));
       Serial.println(3);
     #endif
-    if(operationModeSelection == 2 || operationModeSelection == 3) {
+    if(operationModeSelection == 3 || operationModeSelection == 4) {
       operationMode = operationModeSelection;
       if(staticColorSelection > 1) {
         staticColorSelection--;
@@ -820,7 +820,7 @@ void readButtons() {
       Serial.print(F("Pressed button: "));
       Serial.println(4);
     #endif
-    if(operationModeSelection == 2 || operationModeSelection == 3) {
+    if(operationModeSelection == 3 || operationModeSelection == 4) {
       if(brightnessSelection < MAX_BRIGHTNESS) {
         brightnessSelection++;
         brightness = brightnessSelection * 25 + 5;
@@ -853,7 +853,7 @@ void readButtons() {
       Serial.print(F("Pressed button: "));
       Serial.println(5);
     #endif
-    if(operationModeSelection == 2 || operationModeSelection == 3) {
+    if(operationModeSelection == 3 || operationModeSelection == 4) {
       if(brightnessSelection > 0) {
         brightnessSelection--;
         brightness = brightnessSelection * 25;

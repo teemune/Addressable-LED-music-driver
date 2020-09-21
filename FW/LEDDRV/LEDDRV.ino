@@ -33,10 +33,11 @@ const unsigned int STRIP_TYPE_SETTING_ADDRESS = 12;
 bool modeSettingChanged = LOW;
 bool colorSettingChanged = LOW;
 bool brightnessSettingChanged = LOW;
+bool stripTypeChanged = LOW;
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 2
+#define DEBUG_LEVEL 0
 #define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -57,7 +58,7 @@ unsigned int FFT_FADING_DELAY = 1;                  // How fast the peaks fade i
 unsigned int FFT_FADING_AMOUNT = 5;
 const unsigned int MAX_AMPLITUDE_FADING_FACTOR = 3; // How fast the max amplitude value fades, bigger value -> less fading
 const unsigned int LOW_PEAK_SUPPRESSION = 4;        // Suppress the signal from first FFT bin
-unsigned int REFRESH_INTERVAL = 10;           // How often to light up a new LED (ms)
+unsigned int REFRESH_INTERVAL = 1;                 // How often to light up a new LED (ms)
 const unsigned int COLOR_SENSITIVITY = 5;           // Overall sensitivity, default 10
 const unsigned int RED_SENSITIVITY = 3;             // Sensitivity adjustment for red, default 3
 const unsigned int GREEN_SENSITIVITY = 5;           // Sensitivity adjustment for green, default 5
@@ -84,6 +85,7 @@ const unsigned int SEGMENT_REFRESH_INTERVAL = 500;  // (ms) Update rate for 7-se
 const unsigned int NUMBER_OF_MODES = 3;
 const unsigned int COLOR_QUANTITY = 21;
 const unsigned int MAX_BRIGHTNESS = 10;
+const unsigned int LED_STRIP_TYPES_SUPPORTED = 3;
 
 //#ifdef ADC_PRESCALE_32
 //  const unsigned int hzPerBin = 35000 / FFT_DATA_SIZE;
@@ -184,6 +186,8 @@ uint8_t brightnessSelection = 5;
 bool ledUpdate = LOW;
 uint8_t staticColorSelection = 1;
 
+uint8_t stripTypeSelection = 2;
+
 /* 7 segment */
 
 MCP23017SevenSegDisplay sevenSeg[2];
@@ -246,7 +250,7 @@ void setup() {
   
   /* Serial communications setup */
 
-#if DEBUG_LEVEL > 0
+#if DEBUG_LEVEL > 1
   Serial.begin(SERIAL_BAUD_RATE);
 //  while(!Serial){
 //    ;                                               // If you want the code to only start when you open serial monitor
@@ -314,7 +318,7 @@ void setup() {
   bitWrite(ADCSRA,0,0);
 #endif
 
-#if DEBUG_LEVEL > 2
+#if DEBUG_LEVEL > 1
   Serial.println(F("Serial port opened"));
   Serial.print(F("Serial baud rate: "));
   Serial.print(SERIAL_BAUD_RATE);
@@ -333,13 +337,29 @@ void setup() {
   }
   _EEPROMsetting = EEPROM.read(BRIGHTNESS_SETTING_ADDRESS);
   if( _EEPROMsetting >= 0 && _EEPROMsetting <= MAX_BRIGHTNESS) {
-    brightness = _EEPROMsetting;
     brightnessSelection = _EEPROMsetting;
+    brightness = brightnessSelection * 25;
+    if(brightnessSelection == 10) {
+      brightness = 255;
+    }
   }
+  _EEPROMsetting = EEPROM.read(STRIP_TYPE_SETTING_ADDRESS);
+  if( _EEPROMsetting >= 0 && _EEPROMsetting <= LED_STRIP_TYPES_SUPPORTED) {
+    stripTypeSelection = _EEPROMsetting;
+  }
+
+#if DEBUG_LEVEL > 1
+  Serial.print(F("Mode: "));
+  Serial.println(operationModeSelection);
+  Serial.print(F("Color: "));
+  Serial.println(staticColorSelection);
+  Serial.print(F("Brightness: "));
+  Serial.println(brightnessSelection);
+#endif
 
   /* Setup complete */
 
-#if DEBUG_LEVEL > 2
+#if DEBUG_LEVEL > 1
   Serial.println(F("Setup complete"));
 #endif
   
@@ -414,8 +434,13 @@ void loop() {
   {
     if(displayPausedSequences < 1) {
       // 7 segment update
-      uint8_t _amplitudeDisplay = (uint8_t)((float)maxAmplitude / 128.0 * 99.0);
-      set7SegNumber(_amplitudeDisplay);
+      if (operationModeSelection == 1 || operationModeSelection == 2) {
+        uint8_t _amplitudeDisplay = (uint8_t)((float)maxAmplitude / 128.0 * 99.0);
+        set7SegNumber(_amplitudeDisplay);
+      } else {
+        set7SegNumber(operationModeSelection);
+      }
+
 
       // EEPROM
       if(modeSettingChanged) {
@@ -437,6 +462,13 @@ void loop() {
         EEPROM.write(BRIGHTNESS_SETTING_ADDRESS, brightnessSelection);
         #if DEBUG_MODE > 1
           Serial.println(F("brightnessSettingChanged"));
+        #endif
+      }
+      if(stripTypeChanged) {
+        stripTypeChanged = LOW;
+        EEPROM.write(STRIP_TYPE_SETTING_ADDRESS, stripTypeSelection);
+        #if DEBUG_MODE > 1
+          Serial.println(F("stripTypeChanged"));
         #endif
       }
     } else {
@@ -467,8 +499,6 @@ void loop() {
 #endif
 
     _last_post_time = millis();
-//    cycle_count++;
-//    Serial.println("------");
   }
 #endif
 } // void loop()
@@ -488,7 +518,7 @@ void byteFFTanalysis() {
 
   // FFT with 2^7 bins
   if(fix_fft(FFTdata, im, 7, 0) < 0) { // FFT processing
-#if DEBUG_LEVEL > 4
+#if DEBUG_LEVEL > 1
     Serial.println(F("Error in FFT"));
 #endif
     return;
@@ -643,7 +673,6 @@ if (_blueValue < 255 ) {
 #endif
 
 #ifdef AMPLITUDE_DETECTION
-Serial.println("DISABLED");
   if (maxAmplitudeFading >= MAX_AMPLITUDE_FADING_FACTOR) {
     if (maxAmplitude > 10) {
         maxAmplitude -= 10;
@@ -727,7 +756,6 @@ void readButtons() {
     if(operationModeSelection == 1 || operationModeSelection == 2) {
       red = 90;
     }
-    
     #if DEBUG_LEVEL > 1
       Serial.print(F("Operation mode: "));
       Serial.println(operationMode);
@@ -823,13 +851,11 @@ void readButtons() {
     if(operationModeSelection == 3 || operationModeSelection == 4) {
       if(brightnessSelection < MAX_BRIGHTNESS) {
         brightnessSelection++;
-        brightness = brightnessSelection * 25 + 5;
+        brightness = brightnessSelection * 25;
       }
       if(brightnessSelection == 10) {
-          brightness = 255;
-        } else {
-          brightness = brightnessSelection * 25;
-        }
+        brightness = 255;
+      }
       // Update LEDs to change brightness
       operationMode = operationModeSelection;
       set7SegNumber(brightnessSelection);
@@ -875,23 +901,33 @@ void readButtons() {
   // Button 6
   if(UIButton[6].pressed())
   {
-    #if DEBUG_LEVEL > 1
+    stripTypeChanged = HIGH;
+#if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(6);
-    #endif
-    displayPausedSequences = 2;
-    set7SegFlatLine();
+#endif
+    if(stripTypeSelection < LED_STRIP_TYPES_SUPPORTED) {
+      stripTypeSelection++;  
+    }
+    changeStripType(stripTypeSelection);
+    operationMode = operationModeSelection;
+    displayPausedSequences = 8;
     delay(250);
   }
   // Button 7
   if(UIButton[7].pressed())
   {
+    stripTypeChanged = HIGH;
     #if DEBUG_LEVEL > 1
       Serial.print(F("Pressed button: "));
       Serial.println(7);
     #endif
-    displayPausedSequences = 2;
-    set7SegFlatLine();
+    if(stripTypeSelection > 1) {
+      stripTypeSelection--;  
+    }
+    changeStripType(stripTypeSelection);
+    operationMode = operationModeSelection;
+    displayPausedSequences = 8;
     delay(250);
   }
 }
@@ -1114,9 +1150,6 @@ void setLedBrightness(uint8_t _brightness) {
     leds[i].maximizeBrightness();
     leds[i].fadeToBlackBy(_brightness);
   }
-  Serial.print(F("Brightness: "));
-  Serial.println(_brightness);
-  //FastLED.setBrightness(BRIGHTNESS );
   FastLED.show();
 }
 
@@ -1126,22 +1159,22 @@ void testLeds() {
     leds[i] = CRGB(25, 0, 0);
   }
   FastLED.show();
-  delay(300);
+  delay(150);
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB(0, 25, 0);
   }
   FastLED.show();
-  delay(300);
+  delay(150);
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB(0, 0, 25);
   }
   FastLED.show();
-  delay(300);
+  delay(150);
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB(15, 15, 15);
   }
   FastLED.show();
-  delay(300);
+  delay(150);
   for(int i=0;i<NUM_LEDS;i++){
     leds[i] = CRGB(0, 0, 0);
   }
@@ -1162,4 +1195,29 @@ void set7SegFlatLine() {
   sevenSeg[0].flatLine();
   sevenSeg[1].flatLine();
   displayPausedSequences = 2;
+}
+
+void changeStripType(uint8_t _stripTypeSelection) {
+  switch(_stripTypeSelection) {
+  case 1:
+  set7SegNumber(12);
+  FastLED.addLeds<WS2812, LED_UC_D, GRB>(leds, NUM_LEDS);
+  testLeds();
+  break;
+
+  case 2:
+  set7SegNumber(13);
+  FastLED.addLeds<WS2813, LED_UC_D, GRB>(leds, NUM_LEDS);
+  testLeds();
+  break;
+
+  case 3:
+  set7SegNumber(15);
+  FastLED.addLeds<WS2812, LED_UC_D, GRB>(leds, NUM_LEDS);
+  testLeds();
+  break;
+
+  default:
+  break;
+  }
 }

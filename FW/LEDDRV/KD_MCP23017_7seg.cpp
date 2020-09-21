@@ -53,8 +53,7 @@ void MCP23017SevenSegDisplay::setInverted(bool _inverted)
 
 void MCP23017SevenSegDisplay::setNumber(int _number)
 {
-  clearDisplay();
-  
+  //clearDisplay();
   for(int i = 0; i < 7; i++) {
     if(inverted) {
       mcp_chip->digitalWrite(pins[i], !bitRead(numbersToDisplay[_number],i));

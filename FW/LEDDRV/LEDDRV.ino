@@ -527,7 +527,7 @@ void byteFFTanalysis() {
   uint16_t _absoluteValueArray[FFT_DATA_SIZE/2];
 
   for (int i = BIN_ONE_TH; i < FFT_DATA_SIZE/2; i++) {
-    _absoluteValueArray[i] = sqrt((long)FFTdata[i] * (long)FFTdata[i] + (long)im[i] * (long)im[i]);
+    _absoluteValueArray[i] = sqrt((uint32_t)FFTdata[i] * (uint32_t)FFTdata[i] + (uint32_t)im[i] * (uint32_t)im[i]);
   }
 
   // Suppress the low frequency peak

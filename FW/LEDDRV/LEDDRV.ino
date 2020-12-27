@@ -37,7 +37,7 @@ bool stripTypeChanged = LOW;
 
 /* Define debugging level */
 
-#define DEBUG_LEVEL 0
+#define DEBUG_LEVEL 3
 #define POST_INTERVAL 300
 #define SERIAL_PLOTTER 0
 #define POLL_DELAY 50                               // Serial plotter poll delay
@@ -290,6 +290,7 @@ void setup() {
 
   for (int i = 0; i < NO_OF_BUTTONS; i++){
     UIButton[i].setInverted(HIGH);
+    UIButton[i].setPullup(HIGH);
   }
 
   /* ADC */

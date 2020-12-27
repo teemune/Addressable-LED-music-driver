@@ -118,9 +118,6 @@ const int bufferedSW6 = 23;
 const int bufferedSW7 = 22;
 const int bufferedSW8 = 21;
 
-const int MSGEQ7_STROBE = 5;
-const int MSGEQ7_RESET = 8;
-
 const int MCP23017_RESET = 30;                      // The pin won't work with Arduino
 
 const int LED_UC_X = 13;                            // Same as debug LED
@@ -131,7 +128,6 @@ const int TIP_SWITCH = 16;
 
 /* Arduino analog */
 const int audioSignalIn = 15;
-const int MSGEQ7analogOut = 14;
 
 /* MCP23017 */
 
@@ -1193,6 +1189,8 @@ void set7SegFlatLine() {
   displayPausedSequences = 2;
 }
 
+// For testing purposes
+// Not very functional as the inital configuration in the beginning is missing
 void changeStripType(uint8_t _stripTypeSelection) {
   switch(_stripTypeSelection) {
   case 1:
